@@ -31,6 +31,58 @@ const formatNumber = (num: number) => {
 
 // --- Sub-components ---
 
+const SystemBlueprintViewer: React.FC = () => {
+    return (
+        <div className="p-4 sm:p-8 animate-in fade-in duration-500 pb-32">
+            <div className="bg-neutral-900 border border-blue-500/30 p-6 rounded-[2.5rem] shadow-[0_0_30px_rgba(59,130,246,0.1)] mb-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                <h2 className="text-2xl font-black text-white italic mb-2 relative z-10">مخطط النظام (System Blueprint)</h2>
+                <p className="text-xs text-gray-400 font-bold relative z-10">بيانات التكوين الحساسة والإعدادات المحفوظة.</p>
+            </div>
+
+            <div className="space-y-6">
+                {/* Active Config */}
+                <div className="bg-black border border-green-500/30 rounded-3xl p-6 relative overflow-hidden">
+                    <div className="absolute top-4 left-4 bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-[10px] font-black border border-green-500/50">ACTIVE</div>
+                    <h3 className="text-lg font-black text-white mb-4">إعدادات Firebase (Active)</h3>
+                    <pre className="text-[10px] font-mono text-green-300 overflow-x-auto bg-black/50 p-4 rounded-xl border border-white/5" dir="ltr">
+                        {JSON.stringify(SYSTEM_CONFIG.firebase, null, 2)}
+                    </pre>
+                </div>
+
+                {/* Cloudflare Config */}
+                <div className="bg-black border border-orange-500/30 rounded-3xl p-6 relative overflow-hidden">
+                    <div className="absolute top-4 left-4 bg-orange-500/20 text-orange-400 px-3 py-1 rounded-full text-[10px] font-black border border-orange-500/50">STORAGE</div>
+                    <h3 className="text-lg font-black text-white mb-4">إعدادات Cloudflare R2</h3>
+                    <pre className="text-[10px] font-mono text-orange-300 overflow-x-auto bg-black/50 p-4 rounded-xl border border-white/5" dir="ltr">
+                        {JSON.stringify(SYSTEM_CONFIG.cloudflare, null, 2)}
+                    </pre>
+                </div>
+
+                {/* Smart Code Logic */}
+                <div className="bg-neutral-800 border border-purple-500/30 rounded-3xl p-6 relative overflow-hidden">
+                    <div className="absolute top-4 left-4 bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full text-[10px] font-black border border-purple-500/50">LOGIC</div>
+                    <h3 className="text-lg font-black text-white mb-4">كود الرفع الذكي (Smart Upload)</h3>
+                    <div className="bg-black p-4 rounded-xl border border-white/10 overflow-x-auto">
+                        <code className="text-[10px] font-mono text-purple-300 whitespace-pre block" dir="ltr">
+                            {SYSTEM_CONFIG.smartUploadLogic}
+                        </code>
+                    </div>
+                </div>
+
+                {/* Legacy Config */}
+                <div className="bg-red-950/20 border border-red-500/20 rounded-3xl p-6 relative overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
+                    <div className="absolute top-4 left-4 bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-[10px] font-black border border-red-500/50">LEGACY</div>
+                    <h3 className="text-lg font-black text-white mb-4">الإعدادات القديمة (Legacy)</h3>
+                    <pre className="text-[10px] font-mono text-red-300 overflow-x-auto bg-black/50 p-4 rounded-xl border border-white/5" dir="ltr">
+                        {JSON.stringify(SYSTEM_CONFIG.legacyConfig, null, 2)}
+                    </pre>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const AppAnalytics: React.FC<{ videos: Video[] }> = ({ videos }) => {
     const sortedVideos = useMemo(() => {
         return [...videos].sort((a, b) => {
@@ -376,7 +428,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // View Mode
-  const [viewMode, setViewMode] = useState<'videos' | 'keys' | 'ai_setup' | 'analytics'>('videos'); 
+  const [viewMode, setViewMode] = useState<'videos' | 'keys' | 'ai_setup' | 'analytics' | 'blueprint'>('videos'); 
   
   // Security State
   const [failedAttempts, setFailedAttempts] = useState(() => {
@@ -758,6 +810,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <span className="relative z-10">المفاتيح</span>
                 {viewMode === 'keys' && <div className="absolute inset-0 bg-green-600/10 blur-xl"></div>}
             </button>
+            <button 
+                onClick={() => setViewMode('blueprint')} 
+                className={`relative px-4 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider transition-all duration-500 border overflow-hidden group w-full sm:w-auto ${viewMode === 'blueprint' ? 'bg-blue-600/10 border-blue-500 text-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.4)]' : 'bg-black/40 border-white/5 text-gray-400 hover:border-white/20 hover:text-white'}`}
+            >
+                <span className="relative z-10">النظام</span>
+                {viewMode === 'blueprint' && <div className="absolute inset-0 bg-blue-600/10 blur-xl"></div>}
+            </button>
         </div>
       </div>
 
@@ -767,6 +826,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <CentralKeyManager />
       ) : viewMode === 'analytics' ? (
           <AppAnalytics videos={initialVideos} />
+      ) : viewMode === 'blueprint' ? (
+          <SystemBlueprintViewer />
       ) : (
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32 space-y-8">
             {/* NEW LAYOUT: Upload Section */}

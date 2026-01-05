@@ -1,6 +1,6 @@
 
 // -----------------------------------------------------------------------------
-// TECHNICAL CHEAT SHEET & SYSTEM BLUEPRINT
+// TECHNICAL CHEAT SHEET & SYSTEM BLUEPRINT (THE BLACK BOX)
 // -----------------------------------------------------------------------------
 // This file contains the critical configuration data for "Rooh1 / Al-Hadiqa".
 // IT MUST NEVER BE DELETED.
@@ -14,6 +14,7 @@ export const SYSTEM_CONFIG = {
     logoUrl: "https://i.top4top.io/p_3643ksmii1.jpg"
   },
   
+  // 🟢 ACTIVE CONFIGURATION (From Technical Cheat Sheet - Verified Working)
   firebase: {
     // Responsible for Database (Firestore) & Auth
     apiKey: "AIzaSyCjuQxanRlM3Ef6-vGWtMZowz805DmU0D4",
@@ -23,7 +24,7 @@ export const SYSTEM_CONFIG = {
     messagingSenderId: "798624809478",
     appId: "1:798624809478:web:472d3a3149a7e1c24ff987",
     measurementId: "G-Q59TKDZVDX",
-    notes: "The projectId 'rooh1-b80e6' is the source of truth. 'rooh1-project' is a legacy placeholder."
+    notes: "The projectId 'rooh1-b80e6' is the source of truth."
   },
 
   cloudflare: {
@@ -44,6 +45,56 @@ export const SYSTEM_CONFIG = {
     keySource: "process.env.GEMINI_API_KEY", // Loaded from environment or Firestore 'settings/api_config'
     role: "Generates titles, descriptions, and acts as 'The Cursed Garden Mistress'."
   },
+
+  // 🟡 ALTERNATIVE / LEGACY CONFIGURATION (From Logs/Backup)
+  // Use these if the active configuration fails or if migrating back to the legacy project.
+  legacyConfig: {
+    firebase: {
+        apiKey: "AIzaSy...", 
+        authDomain: "rooh1-project.firebaseapp.com",
+        projectId: "rooh1-project",
+        storageBucket: "rooh1-project.appspot.com",
+        messagingSenderId: "1234567890",
+        appId: "1:1234567890:web:abcdef..."
+    },
+    cloudflare: {
+        workerUrl: "https://rooh1-worker.workers.dev",
+        publicUrl: "https://pub-rooh1.r2.dev"
+    }
+  },
+
+  // 💾 SMART CODE PRESERVATION
+  // The user explicitly requested to store this specific logic pattern for future reference.
+  // This is the "Ideal Logic" for uploading and linking.
+  smartUploadLogic: `
+    export const finalUploadSystem = async (file: File, title: string, description: string) => {
+      // 1. Prepare File Name
+      const fileName = \`\${Date.now()}-\${encodeURIComponent(title)}.mp4\`;
+      
+      // 2. Determine Worker URL (Dynamic based on Active Config)
+      // Note: Use 'bold-king-9a8e' for current live env, 'rooh1-worker' for legacy.
+      const workerUrl = \`\${SYSTEM_CONFIG.cloudflare.workerUrl}/\${fileName}\`;
+
+      // 3. Upload via XHR (To avoid CORS Preflight issues often found with fetch)
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', workerUrl, true);
+      xhr.setRequestHeader('Content-Type', file.type);
+
+      xhr.onload = async () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          // 4. Link to Database (Active Project: rooh1-b80e6)
+          await addDoc(collection(db, "videos"), {
+            title: title,
+            description: description,
+            video_url: \`\${SYSTEM_CONFIG.cloudflare.publicUrl}/\${fileName}\`,
+            created_at: serverTimestamp()
+          });
+          console.log("🔥 تم النشر والربط بنجاح!");
+        }
+      };
+      xhr.send(file);
+    };
+  `,
 
   databaseStructure: {
     collections: {
