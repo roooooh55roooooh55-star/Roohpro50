@@ -7,22 +7,14 @@ import CustomDynamicLayout from './CustomDynamicLayout';
 
 export const LOGO_URL = "https://i.top4top.io/p_3643ksmii1.jpg";
 
-// Expanded Color Palette to ensure every video has a unique vibrant neon border
-const NEON_COLORS = [
-  'shadow-[0_0_15px_rgba(220,38,38,0.5)] border-red-500',      // Red
-  'shadow-[0_0_15px_rgba(34,211,238,0.5)] border-cyan-400',     // Cyan
-  'shadow-[0_0_15px_rgba(234,179,8,0.5)] border-yellow-500',    // Yellow
-  'shadow-[0_0_15px_rgba(168,85,247,0.5)] border-purple-500',   // Purple
-  'shadow-[0_0_15px_rgba(236,72,153,0.5)] border-pink-500',     // Pink
-  'shadow-[0_0_15px_rgba(244,63,94,0.5)] border-rose-500',      // Rose
-  'shadow-[0_0_15px_rgba(59,130,246,0.5)] border-blue-500',     // Blue
-  'shadow-[0_0_15px_rgba(16,185,129,0.5)] border-emerald-500',  // Emerald
-  'shadow-[0_0_15px_rgba(249,115,22,0.5)] border-orange-500',   // Orange
-  'shadow-[0_0_15px_rgba(139,92,246,0.5)] border-violet-500',   // Violet
-  'shadow-[0_0_15px_rgba(132,204,22,0.5)] border-lime-500',     // Lime
-  'shadow-[0_0_15px_rgba(20,184,166,0.5)] border-teal-400',     // Teal
-  'shadow-[0_0_15px_rgba(99,102,241,0.5)] border-indigo-500',   // Indigo
-  'shadow-[0_0_15px_rgba(217,70,239,0.5)] border-fuchsia-500',  // Fuchsia
+// PERFORMANCE OPTIMIZED PALETTE: Just Borders, NO Shadows/Glows
+const NEON_BORDERS = [
+  'border-red-600',       'border-orange-500',    'border-amber-500',     'border-yellow-500',
+  'border-lime-600',      'border-green-600',     'border-emerald-600',   'border-teal-500',
+  'border-cyan-500',      'border-sky-500',       'border-blue-600',      'border-indigo-500',
+  'border-violet-600',    'border-purple-600',    'border-fuchsia-600',   'border-pink-600',
+  'border-rose-600',      'border-slate-500',     'border-zinc-500',      'border-neutral-500',
+  'border-indigo-400',    'border-red-400',       'border-orange-400',    'border-blue-400'
 ];
 
 export const getNeonColor = (id: string) => {
@@ -30,7 +22,7 @@ export const getNeonColor = (id: string) => {
   for (let i = 0; i < id.length; i++) {
     hash = id.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return NEON_COLORS[Math.abs(hash) % NEON_COLORS.length];
+  return NEON_BORDERS[Math.abs(hash) % NEON_BORDERS.length];
 };
 
 export const getDeterministicStats = (seed: string) => {
@@ -60,7 +52,6 @@ export const formatVideoSource = (video: Video) => {
     return ""; // Can't play redirect without video source
   }
   
-  // Basic validation
   if (!r2Url || !r2Url.startsWith('http')) return "";
 
   try {
@@ -73,13 +64,30 @@ export const formatVideoSource = (video: Video) => {
   return r2Url;
 };
 
-// Updated Trend Badge: High Intensity Red Flame (Matching AppBar Button Style)
+// --- SAFE VIDEO COMPONENT FOR AUTOPLAY ---
+export const SafeAutoPlayVideo: React.FC<React.VideoHTMLAttributes<HTMLVideoElement>> = (props) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  useEffect(() => {
+    const v = videoRef.current;
+    if (v && props.src) {
+      v.muted = true;
+      const playPromise = v.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {});
+      }
+    }
+  }, [props.src]);
+
+  return <video ref={videoRef} {...props} autoPlay={false} />;
+};
+
 export const NeonTrendBadge = ({ is_trending }: { is_trending: boolean }) => {
   if (!is_trending) return null;
   return (
     <div className="absolute top-2 left-2 z-50">
-      <div className="p-2 rounded-xl bg-black/60 backdrop-blur-md border border-red-500 text-red-500 shadow-[0_0_30px_#ef4444,0_0_60px_#ef444499] animate-pulse flex items-center justify-center">
-        <svg className="w-5 h-5 drop-shadow-[0_0_5px_currentColor]" fill="currentColor" viewBox="0 0 24 24">
+      <div className="p-1.5 rounded-lg bg-red-600 text-white shadow-[0_0_15px_#ef4444] animate-pulse flex items-center justify-center border border-red-400">
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
           <path d="M17.55,11.2C17.32,10.93 15.33,8.19 15.33,8.19C15.33,8.19 15.1,10.03 14.19,10.82C13.21,11.66 12,12.24 12,13.91C12,15.12 12.6,16.22 13.56,16.89C13.88,17.11 14.24,17.29 14.63,17.41C15.4,17.63 16.23,17.61 17,17.33C17.65,17.1 18.23,16.69 18.66,16.15C19.26,15.38 19.5,14.41 19.34,13.44C19.16,12.56 18.63,11.83 18.05,11.33C17.9,11.23 17.73,11.25 17.55,11.2M13,3C13,3 12,5 10,7C8.5,8.5 7,10 7,13C7,15.76 9.24,18 12,18C12,18 11.5,17.5 11,16.5C10.5,15.5 10,14.5 10,13.5C10,12.5 10.5,11.5 11.5,10.5C12.5,9.5 14,8 14,8C14,8 15,10 16,12C16.5,13 17,14 17,15C17,15.5 16.9,16 16.75,16.5C17.5,16 18,15.5 18,15C18,13 17,11.5 15,10C13.5,8.88 13,3 13,3Z"/>
         </svg>
       </div>
@@ -116,10 +124,9 @@ export const VideoCardThumbnail: React.FC<{
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasError, setHasError] = useState(false);
   
-  // Call hooks unconditionally
   const stats = useMemo(() => video ? getDeterministicStats(video.video_url) : { views: 0, likes: 0 }, [video?.video_url]);
   const formattedSrc = formatVideoSource(video);
-  const neonStyle = video ? getNeonColor(video.id) : '';
+  const neonBorder = video ? getNeonColor(video.id) : 'border-neutral-700';
   const isLiked = interactions?.likedIds?.includes(video?.id) || false;
   const isSaved = interactions?.savedIds?.includes(video?.id) || false;
   const watchItem = interactions?.watchHistory?.find(h => h.id === video?.id);
@@ -129,7 +136,7 @@ export const VideoCardThumbnail: React.FC<{
 
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || hasError || !video) return; // Added safety check for !video inside effect
+    if (!v || hasError || !video) return;
     
     if (isOverlayActive) {
       v.pause();
@@ -147,14 +154,13 @@ export const VideoCardThumbnail: React.FC<{
     }, { threshold: 0.15 }); 
     observer.observe(v);
     return () => observer.disconnect();
-  }, [video?.video_url, isOverlayActive, hasError, video]); // Add video to dep array
+  }, [video?.video_url, isOverlayActive, hasError, video]);
 
-  // Now handle early returns
   if (!video) return null;
 
   if (hasError || !formattedSrc) {
     return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 border border-red-900/30 rounded-2xl p-4 text-center group">
+        <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 border border-red-900/30 rounded-2xl p-4 text-center group transform-gpu backface-hidden">
             <div className="w-10 h-10 rounded-full bg-red-900/20 flex items-center justify-center mb-2">
                 <svg className="w-5 h-5 text-red-700 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
             </div>
@@ -164,18 +170,26 @@ export const VideoCardThumbnail: React.FC<{
     );
   }
 
+  // --- STYLE LOGIC OPTIMIZED FOR PERFORMANCE ---
+  // Trend = Static Red Border + Glow Shadow (Only one with shadow)
+  // Others = Static Color Border + NO Shadow
+  const containerStyle = video.is_trending 
+    ? 'border-red-600 border-[2.5px] shadow-[0_0_15px_rgba(220,38,38,0.5)]' 
+    : `${neonBorder} border-2`;
+
   return (
-    <div className={`w-full h-full relative bg-neutral-950 overflow-hidden group rounded-2xl border-2 transition-all duration-500 ${neonStyle} ${video.is_trending ? 'scale-[1.03] border-red-600 shadow-[0_0_20px_#dc2626]' : 'hover:scale-[1.01]'}`}>
+    <div className={`w-full h-full relative bg-neutral-950 overflow-hidden group rounded-2xl transition-transform duration-300 transform-gpu backface-hidden active:scale-95 ${containerStyle}`}>
+      
+      {/* No Image Placeholder - Video loads immediately */}
       <video 
         ref={videoRef} 
         src={formattedSrc} 
-        poster={video.poster_url} 
         muted 
         loop 
         playsInline 
         crossOrigin="anonymous" 
-        preload="metadata"
-        className="w-full h-full object-cover opacity-100 contrast-110 saturate-125 transition-all duration-700 pointer-events-none landscape:object-contain" 
+        preload="auto" 
+        className="w-full h-full object-cover opacity-100 contrast-110 saturate-125 pointer-events-none landscape:object-contain" 
         onError={() => setHasError(true)}
       />
       
@@ -184,35 +198,35 @@ export const VideoCardThumbnail: React.FC<{
       <div className="absolute top-2 right-2 flex flex-col items-center gap-1 z-30">
         <button 
           onClick={(e) => { e.stopPropagation(); onLike?.(video.id); }}
-          className={`p-2 rounded-xl backdrop-blur-md border-2 transition-all duration-300 active:scale-90 flex items-center justify-center ${isHeartActive ? 'bg-red-600/30 border-red-500 shadow-[0_0_12px_#ef4444]' : 'bg-black/60 border-white/20 hover:border-red-500/50'}`}
+          className={`p-2 rounded-xl backdrop-blur-md border transition-all duration-300 ${isHeartActive ? 'bg-red-600/30 border-red-500 text-red-500' : 'bg-black/60 border-white/20 text-gray-400 hover:border-red-500/50'}`}
         >
-          <svg className={`w-5 h-5 ${isHeartActive ? 'text-red-500' : 'text-gray-400'}`} fill={isHeartActive ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill={isHeartActive ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
           </svg>
         </button>
 
         {!isWatched && (
-          <div className="px-2 py-0.5 bg-yellow-400/10 border border-yellow-400 rounded-md shadow-[0_0_10px_#facc15] backdrop-blur-sm mt-1 animate-pulse">
-             <span className="text-[9px] font-black text-blue-400 drop-shadow-[0_0_2px_rgba(59,130,246,0.8)]">جديد</span>
+          <div className="px-2 py-0.5 bg-yellow-400/10 border border-yellow-400 rounded-md backdrop-blur-sm mt-1">
+             <span className="text-[9px] font-black text-blue-400">جديد</span>
           </div>
         )}
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 z-20 pointer-events-none">
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3 z-20 pointer-events-none">
         <div className="flex justify-start mb-1">
           <button 
             onClick={(e) => { 
               e.stopPropagation(); 
               onCategoryClick?.(video.category); 
             }}
-            className="pointer-events-auto bg-red-600/10 border border-red-600/50 backdrop-blur-md px-2 py-0.5 rounded-[6px] flex items-center gap-1 shadow-[0_0_10px_rgba(220,38,38,0.3)] hover:bg-red-600 hover:text-white transition-all active:scale-90"
+            className="pointer-events-auto bg-red-600/10 border border-red-600/50 backdrop-blur-md px-2 py-0.5 rounded-[6px] flex items-center gap-1 hover:bg-red-600 hover:text-white transition-all active:scale-90"
           >
-             <span className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse"></span>
+             <span className="w-1.5 h-1.5 bg-red-600 rounded-full"></span>
              <span className="text-[8px] font-black text-red-500 hover:text-white truncate max-w-[80px]">{video.category}</span>
           </button>
         </div>
 
-        <p className="text-white text-[10px] font-black line-clamp-1 italic text-right leading-tight drop-shadow-[0_2px_4_black]">{video.title}</p>
+        <p className="text-white text-[10px] font-black line-clamp-1 italic text-right leading-tight drop-shadow-md">{video.title}</p>
         
         <div className="flex items-center justify-end gap-3 mt-1.5 opacity-90">
           <div className="flex items-center gap-1">
@@ -228,15 +242,16 @@ export const VideoCardThumbnail: React.FC<{
       
       {progress > 0 && progress < 0.99 && (
         <div className="absolute bottom-0 left-0 w-full h-1 bg-white/10 z-30">
-          <div className="h-full bg-red-600 shadow-[0_0_12px_red]" style={{ width: `${progress * 100}%` }}></div>
+          <div className="h-full bg-red-600" style={{ width: `${progress * 100}%` }}></div>
         </div>
       )}
     </div>
   );
 };
 
-// Updated: Draggable Resume Notification with Dismissal and Neon Trail
+// ... Rest of the file remains unchanged ...
 const ResumeNotificationFull: React.FC<{ video: Video, onPlay: () => void, onClose: () => void, pos: {top: string, left: string, anim: string} }> = ({ video, onPlay, onClose, pos }) => {
+  // ... (Same as before)
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -302,33 +317,31 @@ const ResumeNotificationFull: React.FC<{ video: Video, onPlay: () => void, onClo
     }
   };
 
+  // Removed glow from resume notification too for performance
   const borderColor = "border-yellow-400";
-  const shadowColor = "shadow-[0_0_20px_#facc15]";
+  const shadowColor = "shadow-none";
   const textColor = "text-yellow-400";
 
   return (
     <>
-        <div className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-40 h-40 bg-red-600/20 rounded-full blur-3xl z-[300] transition-opacity duration-500 pointer-events-none ${isDragging ? 'opacity-100' : 'opacity-0'}`}></div>
-        <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 text-red-500 text-xs font-black z-[350] transition-opacity duration-300 pointer-events-none ${isDragging ? 'opacity-100' : 'opacity-0'}`}>اسحب هنا للإخفاء</div>
-
         <div 
         ref={elementRef}
         onClick={!isDragging ? onPlay : undefined}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`fixed z-[400] transition-transform duration-75 ease-linear flex items-center gap-3 p-2 bg-black/90 backdrop-blur-xl border-2 ${borderColor} ${shadowColor} rounded-2xl cursor-grab active:cursor-grabbing max-w-[280px] group select-none`}
+        className={`fixed z-[400] transition-transform duration-75 ease-linear flex items-center gap-3 p-2 bg-black/95 border-2 ${borderColor} rounded-2xl cursor-grab active:cursor-grabbing max-w-[280px] group select-none`}
         style={{ 
             top: 0, 
             left: 0,
             transform: `translate(${position.x}px, ${position.y}px) scale(${isDragging ? 1.05 : 1})`,
             opacity: isVisible ? 1 : 0,
-            boxShadow: isDragging ? `0 0 40px 5px ${video.is_trending ? '#ef4444' : '#facc15'}, 0 0 80px 10px rgba(255,255,255,0.2)` : ''
+            boxShadow: isDragging ? `0 0 20px 5px ${video.is_trending ? '#ef4444' : '#facc15'}` : ''
         }}
         >
         <button 
             onClick={handlePermanentDismiss}
-            className="absolute -top-3 -left-3 z-[410] bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center border border-white/50 shadow-lg active:scale-90 transition-transform"
+            className="absolute -top-3 -left-3 z-[410] bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center border border-white/50 shadow-md active:scale-90 transition-transform"
         >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
@@ -372,9 +385,11 @@ export const InteractiveMarquee: React.FC<{
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeftState, setScrollLeftState] = useState(0);
+  
   const DEFAULT_SPEED = 0.8;
   const initialSpeed = direction === 'left-to-right' ? -DEFAULT_SPEED : DEFAULT_SPEED;
   const [internalSpeed, setInternalSpeed] = useState(initialSpeed);
+  
   const velX = useRef(0);
   const lastX = useRef(0);
   const lastTime = useRef(0);
@@ -383,34 +398,55 @@ export const InteractiveMarquee: React.FC<{
 
   const displayVideos = useMemo(() => {
     if (!videos || videos.length === 0) return [];
-    return videos.length < 5 ? [...videos, ...videos, ...videos, ...videos] : [...videos, ...videos, ...videos];
+    // Ensure enough duplicates for infinite scroll
+    return videos.length < 5 ? [...videos, ...videos, ...videos, ...videos, ...videos] : [...videos, ...videos, ...videos];
   }, [videos]);
 
   const animate = useCallback(() => {
     const container = containerRef.current;
-    if (container && !isDragging) {
-      container.scrollLeft += internalSpeed;
-      const { scrollLeft, scrollWidth } = container;
-      if (scrollWidth > 0) {
-        const thirdWidth = scrollWidth / 3;
-        if (internalSpeed > 0) { 
-             if (scrollLeft >= (thirdWidth * 2)) container.scrollLeft -= thirdWidth;
-        } else { 
-             if (scrollLeft <= 1) container.scrollLeft += thirdWidth;
-             else if (scrollLeft >= (thirdWidth * 2.5)) container.scrollLeft -= thirdWidth; 
+    if (container) {
+      if (!isDragging) {
+        // Friction Logic: Smoothly return to default speed if momentum is high
+        const targetSpeed = internalSpeed > 0 ? DEFAULT_SPEED : -DEFAULT_SPEED;
+        // Simple Lerp for friction
+        if (Math.abs(internalSpeed - targetSpeed) > 0.05) {
+             // Slowly decay towards target
+             setInternalSpeed(prev => prev * 0.95 + targetSpeed * 0.05);
+        }
+
+        container.scrollLeft += internalSpeed;
+        
+        // Infinite Scroll Loop Logic
+        const { scrollLeft, scrollWidth, clientWidth } = container;
+        if (scrollWidth > 0) {
+           const singleSetWidth = scrollWidth / 3; // Approx since we tripled list
+           // When moving Right (speed > 0)
+           if (internalSpeed > 0) { 
+               if (scrollLeft >= (singleSetWidth * 2)) {
+                   container.scrollLeft = scrollLeft - singleSetWidth;
+               }
+           } 
+           // When moving Left (speed < 0)
+           else { 
+               if (scrollLeft <= 10) { // Buffer
+                   container.scrollLeft = scrollLeft + singleSetWidth;
+               }
+           }
         }
       }
     }
     requestRef.current = requestAnimationFrame(animate);
-  }, [isDragging, internalSpeed]);
+  }, [isDragging, internalSpeed, DEFAULT_SPEED]);
 
   useEffect(() => {
     requestRef.current = requestAnimationFrame(animate);
     return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
   }, [animate]);
 
+  // Center initial scroll
   useEffect(() => {
     if (containerRef.current && videos?.length > 0) {
+      // Small delay to ensure layout is ready
       const tid = setTimeout(() => {
         if (containerRef.current) containerRef.current.scrollLeft = containerRef.current.scrollWidth / 3;
       }, 150);
@@ -421,33 +457,51 @@ export const InteractiveMarquee: React.FC<{
   const handleStart = (clientX: number) => {
     if (resumeTimeout.current) clearTimeout(resumeTimeout.current);
     setIsDragging(true);
-    setInternalSpeed(0);
+    // Pause auto scroll while dragging
+    setInternalSpeed(0); 
     setStartX(clientX - (containerRef.current?.offsetLeft || 0));
     setScrollLeftState(containerRef.current?.scrollLeft || 0);
     lastX.current = clientX;
     lastTime.current = Date.now();
+    velX.current = 0;
   };
 
   const handleMove = (clientX: number) => {
     if (!isDragging || !containerRef.current) return;
     const x = clientX - (containerRef.current.offsetLeft || 0);
-    containerRef.current.scrollLeft = scrollLeftState - (x - startX) * 1.5;
+    // Direct 1:1 movement
+    containerRef.current.scrollLeft = scrollLeftState - (x - startX);
+    
+    // Calculate Velocity
     const now = Date.now();
     const dt = now - lastTime.current;
-    if (dt > 0) velX.current = (clientX - lastX.current) / dt;
+    if (dt > 0) {
+        // Delta X (Current - Last)
+        const dx = clientX - lastX.current;
+        // Calculate velocity (pixels per ms) then scale up for effect
+        velX.current = dx; // Simple delta works better for immediate feel
+    }
     lastX.current = clientX;
     lastTime.current = now;
   };
 
   const handleEnd = () => {
     setIsDragging(false);
-    resumeTimeout.current = setTimeout(() => {
-        if (Math.abs(velX.current) > 0.1) {
-             setInternalSpeed(direction === 'left-to-right' ? -DEFAULT_SPEED : DEFAULT_SPEED);
-        } else {
-             setInternalSpeed(direction === 'left-to-right' ? -DEFAULT_SPEED : DEFAULT_SPEED);
-        }
-    }, 1000); 
+    
+    // MOMENTUM LOGIC
+    let momentum = -velX.current * 1.5; // Scale factor
+
+    // Clamp momentum to avoid crazy speeds
+    if (momentum > 15) momentum = 15;
+    if (momentum < -15) momentum = -15;
+
+    // Apply momentum if significant, otherwise revert to default direction
+    if (Math.abs(momentum) > 1) {
+        setInternalSpeed(momentum);
+    } else {
+        // Return to default direction
+        setInternalSpeed(direction === 'left-to-right' ? -DEFAULT_SPEED : DEFAULT_SPEED);
+    }
   };
 
   if (displayVideos.length === 0) return null;
@@ -484,10 +538,12 @@ export const InteractiveMarquee: React.FC<{
             const isLiked = interactions?.likedIds?.includes(item.id);
 
             return (
-              <div key={`${item.id}-${idx}`} onClick={() => !isDragging && onPlay(item)} className={`${itemDimensions} shrink-0 rounded-xl overflow-hidden border relative active:scale-95 transition-all ${neonStyle} ${item.is_trending ? 'border-red-600 shadow-[0_0_15px_red]' : ''}`} dir="rtl">
-                <video 
+              <div key={`${item.id}-${idx}`} onClick={() => !isDragging && onPlay(item)} className={`${itemDimensions} shrink-0 rounded-xl overflow-hidden border relative active:scale-95 transition-transform ${item.is_trending ? 'border-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)]' : neonStyle}`} dir="rtl">
+                <SafeAutoPlayVideo 
                    src={formattedSrc} 
-                   muted loop playsInline autoPlay crossOrigin="anonymous" preload="metadata" 
+                   muted loop playsInline 
+                   crossOrigin="anonymous" 
+                   preload="metadata"
                    className="w-full h-full object-cover opacity-100 contrast-110 saturate-125 pointer-events-none landscape:object-contain" 
                    onError={(e) => e.currentTarget.style.display = 'none'}
                 />
@@ -499,7 +555,7 @@ export const InteractiveMarquee: React.FC<{
                         e.stopPropagation(); 
                         onLike && onLike(item.id); 
                      }}
-                     className={`p-1.5 rounded-lg backdrop-blur-md border transition-all active:scale-75 ${isLiked ? 'bg-red-600/60 border-red-500 text-white shadow-[0_0_10px_red]' : 'bg-black/40 border-white/20 text-gray-300 hover:text-white hover:border-white/50'}`}
+                     className={`p-1.5 rounded-lg backdrop-blur-md border transition-all active:scale-75 ${isLiked ? 'bg-red-600/60 border-red-500 text-white shadow-none' : 'bg-black/40 border-white/20 text-gray-300 hover:text-white hover:border-white/50'}`}
                    >
                      <svg className="w-3 h-3" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
                    </button>
@@ -516,6 +572,7 @@ export const InteractiveMarquee: React.FC<{
   );
 };
 
+// ... Rest of the file remains unchanged ...
 const MainContent: React.FC<any> = ({ 
   videos, categoriesList, interactions, onPlayShort, onPlayLong, onCategoryClick, onHardRefresh, onOfflineClick, loading, isOverlayActive, downloadProgress, syncStatus, onLike
 }) => {
@@ -680,11 +737,11 @@ const MainContent: React.FC<any> = ({
       {/* Header and Nav Code... */}
       <header className="flex items-center justify-between py-1 bg-black relative px-4 border-b border-white/5 shadow-lg h-12">
         <div className="flex items-center gap-2" onClick={onHardRefresh}>
-          <img src={LOGO_URL} className={`w-8 h-8 rounded-full border-2 transition-all duration-500 ${isActuallyRefreshing ? 'border-yellow-400 shadow-[0_0_20px_#facc15]' : 'border-red-600 shadow-[0_0_10px_red]'}`} />
+          <img src={LOGO_URL} className={`w-8 h-8 rounded-full border-2 transition-all duration-500 ${isActuallyRefreshing ? 'border-yellow-400' : 'border-red-600'}`} />
           {isActuallyRefreshing ? (
              <div className="flex items-center gap-2">
                  <h1 className="text-sm font-black italic text-red-600">الحديقة المرعبة</h1>
-                 <div className="px-2 py-0.5 border border-yellow-400 rounded-lg bg-yellow-400/10 shadow-[0_0_10px_#facc15] animate-pulse">
+                 <div className="px-2 py-0.5 border border-yellow-400 rounded-lg bg-yellow-400/10 animate-pulse">
                      <span className="text-[10px] font-black text-blue-400">تحديث</span>
                  </div>
              </div>
@@ -702,12 +759,12 @@ const MainContent: React.FC<any> = ({
             </div>
           )}
           <div className="flex items-center gap-2">
-             <button onClick={() => setShow3DModal(true)} className="p-2 bg-white/5 border border-cyan-500/50 rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.3)] active:scale-90 transition-all group relative overflow-hidden w-9 h-9 flex items-center justify-center">
+             <button onClick={() => setShow3DModal(true)} className="p-2 bg-white/5 border border-cyan-500/50 rounded-xl active:scale-90 transition-all group relative overflow-hidden w-9 h-9 flex items-center justify-center">
                 <div className="absolute inset-0 bg-cyan-400/10 animate-pulse"></div>
-                <span className="block font-black text-[10px] text-cyan-400 animate-spin-3d drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]">3D</span>
+                <span className="block font-black text-[10px] text-cyan-400 animate-spin-3d">3D</span>
              </button>
           </div>
-          <button onClick={() => setIsSearchOpen(true)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/20 text-white shadow-lg active:scale-90 transition-all hover:border-red-600 hover:text-red-500">
+          <button onClick={() => setIsSearchOpen(true)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/20 text-white active:scale-90 transition-all hover:border-red-600 hover:text-red-500">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           </button>
           <button onClick={onOfflineClick} className="p-1 transition-all active:scale-90 relative group">
@@ -735,8 +792,21 @@ const MainContent: React.FC<any> = ({
         </div>
       )}
 
-      {/* --- DEFAULT LAYOUT (When Locked) --- */}
-      {layoutSettings.isLocked ? (
+      {/* --- RENDER LOGIC: ALWAYS PREFER CUSTOM LAYOUT IF AVAILABLE --- */}
+      {layoutSettings.sections.length > 0 ? (
+        /* CUSTOM DYNAMIC LAYOUT (Respects Admin Names) */
+        <CustomDynamicLayout 
+            sections={layoutSettings.sections}
+            videos={safeVideos}
+            interactions={interactions}
+            onPlayShort={onPlayShort}
+            onPlayLong={onPlayLong}
+            onCategoryClick={onCategoryClick}
+            onLike={onLike}
+            isOverlayActive={isOverlayActive}
+        />
+      ) : (
+        /* DEFAULT HARDCODED FALLBACK (Only if no layout saved) */
         <>
             {/* 1. Moving Shorts Marquee */}
             {marqueeShorts1.length > 0 && <InteractiveMarquee videos={marqueeShorts1} onPlay={(v) => onPlayShort(v, shortsOnly)} isShorts={true} direction="left-to-right" interactions={interactions} transparent={false} onLike={onLike} />}
@@ -857,18 +927,6 @@ const MainContent: React.FC<any> = ({
                 </>
             )}
         </>
-      ) : (
-        /* CUSTOM LAYOUT ACTIVE */
-        <CustomDynamicLayout 
-            sections={layoutSettings.sections}
-            videos={safeVideos}
-            interactions={interactions}
-            onPlayShort={onPlayShort}
-            onPlayLong={onPlayLong}
-            onCategoryClick={onCategoryClick}
-            onLike={onLike}
-            isOverlayActive={isOverlayActive}
-        />
       )}
 
       <div className="w-full h-8 bg-black flex items-center justify-center group relative border-y border-white/5 mt-4">
@@ -894,12 +952,12 @@ const MainContent: React.FC<any> = ({
       {/* ... Modals (3D, Search) ... */}
       {show3DModal && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center pb-80 bg-black/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShow3DModal(false)}>
-          <div className="bg-neutral-900/90 border border-cyan-500/50 p-8 rounded-[2rem] shadow-[0_0_50px_rgba(34,211,238,0.3)] text-center transform scale-100 relative overflow-hidden max-w-xs mx-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-neutral-900/90 border border-cyan-500/50 p-8 rounded-[2rem] shadow-none text-center transform scale-100 relative overflow-hidden max-w-xs mx-4" onClick={e => e.stopPropagation()}>
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent animate-pulse"></div>
-            <h2 className="text-3xl font-black text-white mb-2 italic drop-shadow-lg">تقنية 3D</h2>
+            <h2 className="text-3xl font-black text-white mb-2 italic">تقنية 3D</h2>
             <p className="text-cyan-400 font-bold text-lg animate-pulse">قريباً جداً...</p>
             <div className="mt-6 flex justify-center">
-               <div className="w-16 h-16 rounded-full border-4 border-cyan-500 border-t-transparent animate-spin shadow-[0_0_20px_#22d3ee]"></div>
+               <div className="w-16 h-16 rounded-full border-4 border-cyan-500 border-t-transparent animate-spin"></div>
             </div>
             <button onClick={() => setShow3DModal(false)} className="mt-8 bg-white/10 hover:bg-white/20 px-6 py-2 rounded-xl text-sm font-bold text-white transition-colors border border-white/10">إغلاق</button>
           </div>
@@ -909,7 +967,7 @@ const MainContent: React.FC<any> = ({
       {isSearchOpen && (
         <div className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-300">
           <div className="p-4 flex items-center gap-4 border-b-2 border-white/10 bg-black">
-            <button onClick={() => setIsSearchOpen(false)} className="p-3.5 text-red-600 border-2 border-red-600 rounded-2xl shadow-[0_0_20px_red] active:scale-75 transition-all bg-red-600/10">
+            <button onClick={() => setIsSearchOpen(false)} className="p-3.5 text-red-600 border-2 border-red-600 rounded-2xl shadow-none active:scale-75 transition-all bg-red-600/10">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
             <input 
@@ -918,13 +976,13 @@ const MainContent: React.FC<any> = ({
               placeholder="ابحث في أرشيف الحديقة..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-white/5 border-2 border-white/10 rounded-2xl py-4.5 px-7 text-white text-base outline-none focus:border-red-600 transition-all font-black text-right shadow-inner"
+              className="flex-1 bg-white/5 border-2 border-white/10 rounded-2xl py-4.5 px-7 text-white text-base outline-none focus:border-red-600 transition-all font-black text-right"
             />
           </div>
           <div className="flex-1 overflow-y-auto p-5 space-y-5">
             {searchResults.length > 0 ? searchResults.map((v: any) => v && v.video_url && (
-              <div key={v.id} onClick={() => { setIsSearchOpen(false); v.video_type === 'Shorts' ? onPlayShort(v, shortsOnly) : onPlayLong(v, longsOnly); }} className={`flex gap-4.5 p-4 bg-white/5 rounded-3xl border-2 active:scale-95 transition-all shadow-xl group ${getNeonColor(v.id)}`}>
-                <div className="w-28 h-18 bg-black rounded-2xl overflow-hidden shrink-0 border-2 border-white/10 shadow-lg">
+              <div key={v.id} onClick={() => { setIsSearchOpen(false); v.video_type === 'Shorts' ? onPlayShort(v, shortsOnly) : onPlayLong(v, longsOnly); }} className={`flex gap-4.5 p-4 bg-white/5 rounded-3xl border-2 active:scale-95 transition-all shadow-none group ${getNeonColor(v.id)}`}>
+                <div className="w-28 h-18 bg-black rounded-2xl overflow-hidden shrink-0 border-2 border-white/10">
                   <video src={formatVideoSource(v)} crossOrigin="anonymous" preload="metadata" className="w-full h-full object-cover opacity-100 contrast-110 saturate-125 transition-opacity" onError={(e) => e.currentTarget.style.display = 'none'} />
                 </div>
                 <div className="flex flex-col justify-center flex-1">
@@ -947,8 +1005,8 @@ const MainContent: React.FC<any> = ({
 
 const SectionHeader: React.FC<{ title: string, color: string }> = ({ title, color }) => (
   <div className="px-5 py-2 flex items-center gap-2.5">
-    <div className={`w-1.5 h-3.5 ${color} rounded-full shadow-[0_0_12px_currentColor]`}></div>
-    <h2 className="text-[11px] font-black text-white italic uppercase tracking-[0.15em] drop-shadow-md">{title}</h2>
+    <div className={`w-1.5 h-3.5 ${color} rounded-full`}></div>
+    <h2 className="text-[11px] font-black text-white italic uppercase tracking-[0.15em]">{title}</h2>
   </div>
 );
 

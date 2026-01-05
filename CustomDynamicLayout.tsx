@@ -1,7 +1,6 @@
-
 import React, { useMemo } from 'react';
 import { Video, UserInteractions } from './types';
-import { InteractiveMarquee, VideoCardThumbnail, formatVideoSource, getNeonColor } from './MainContent';
+import { InteractiveMarquee, VideoCardThumbnail, formatVideoSource, getNeonColor, SafeAutoPlayVideo } from './MainContent';
 
 interface CustomDynamicLayoutProps {
   sections: any[];
@@ -72,10 +71,17 @@ const CustomDynamicLayout: React.FC<CustomDynamicLayoutProps> = ({
             <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-2">
                {getVideosForSection(4, 'Shorts').map(v => {
                  const isLiked = interactions?.likedIds?.includes(v.id);
+                 // Using getNeonColor for static colored border, no shadow
                  const neonStyle = getNeonColor(v.id);
                  return (
                    <div key={v.id} onClick={() => onPlayShort(v, videos.filter(x => x.video_type === 'Shorts'))} className={`rounded-xl overflow-hidden relative border-2 ${neonStyle}`}>
-                      <video src={formatVideoSource(v)} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+                      <SafeAutoPlayVideo 
+                        src={formatVideoSource(v)} 
+                        className="w-full h-full object-cover" 
+                        muted 
+                        loop 
+                        playsInline 
+                      />
                       
                       {/* Heart Button Overlay */}
                       <div className="absolute top-1 right-1 z-20">
@@ -84,7 +90,7 @@ const CustomDynamicLayout: React.FC<CustomDynamicLayoutProps> = ({
                               e.stopPropagation(); 
                               onLike(v.id); 
                            }}
-                           className={`p-1.5 rounded-lg backdrop-blur-md border transition-all active:scale-75 ${isLiked ? 'bg-red-600/60 border-red-500 text-white shadow-[0_0_10px_red]' : 'bg-black/40 border-white/20 text-gray-300 hover:text-white hover:border-white/50'}`}
+                           className={`p-1.5 rounded-lg backdrop-blur-md border transition-all active:scale-75 ${isLiked ? 'bg-red-600/60 border-red-500 text-white shadow-none' : 'bg-black/40 border-white/20 text-gray-300 hover:text-white hover:border-white/50'}`}
                          >
                            <svg className="w-3 h-3" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
                          </button>

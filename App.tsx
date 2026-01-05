@@ -67,36 +67,50 @@ const App: React.FC = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // 🧠 AI Logic: خوارزمية التوصية الذكية والفلترة
+  // 🧠 Smart Algorithm: YouTube-Style Logic (Priority: Unseen > Interest > Trend > Recycled)
   const applySmartRecommendations = useCallback((videos: Video[], userInteractions: UserInteractions) => {
-    // 1. استبعاد الفيديوهات التي تم الإعجاب بها مسبقاً (لن تظهر في الواجهة)
-    const unseenVideos = videos.filter(v => !userInteractions.likedIds.includes(v.id));
+    if (!videos || videos.length === 0) return [];
 
-    // 2. تحليل تفضيلات المستخدم بناءً على الإعجابات السابقة
-    const likedVideos = videos.filter(v => userInteractions.likedIds.includes(v.id));
-    const preferredCategories = new Set(likedVideos.map(v => v.category));
+    // 1. Separate Seen vs Unseen
+    // We consider a video "seen" if it's in watchHistory with progress > 10% OR explicitly liked/disliked
+    const seenIds = new Set([
+        ...userInteractions.likedIds, 
+        ...userInteractions.dislikedIds,
+        ...userInteractions.watchHistory.filter(w => w.progress > 0.1).map(w => w.id)
+    ]);
 
-    // 3. نظام النقاط (Scoring System)
-    const scoredVideos = unseenVideos.map(video => {
-      let score = Math.random(); // عشوائية أساسية للتنويع
+    const unseenVideos = videos.filter(v => !seenIds.has(v.id));
+    const seenVideos = videos.filter(v => seenIds.has(v.id));
 
-      // زيادة النقاط بشكل كبير إذا كان الفيديو من قسم يحبه المستخدم
-      if (preferredCategories.has(video.category)) {
-        score += 10; 
-      }
+    // 2. Get User Interests from SmartBrain (Local + Cloud)
+    const userInterests = SmartBrain.getTopInterests();
 
-      // زيادة طفيفة للترند
-      if (video.is_trending) {
-        score += 2;
-      }
+    // 3. Scoring Function
+    const scoreVideo = (v: Video) => {
+        let score = Math.random() * 10; // Base randomness
+        
+        // Category Interest Boost
+        if (userInterests.includes(v.category)) score += 20;
+        
+        // Trending Boost
+        if (v.is_trending) score += 5;
 
-      return { video, score };
-    });
+        // Recency Boost (Newer is better)
+        // Assuming created_at is timestamp, simplistic approach:
+        // score += (v.created_at?.seconds || 0) * 0.000001; 
 
-    // 4. ترتيب الفيديوهات بناءً على النقاط (الأعلى يظهر أولاً)
-    scoredVideos.sort((a, b) => b.score - a.score);
+        return score;
+    };
 
-    return scoredVideos.map(item => item.video);
+    // 4. Sort Unseen Videos
+    const sortedUnseen = unseenVideos.sort((a, b) => scoreVideo(b) - scoreVideo(a));
+
+    // 5. Sort Seen Videos (Least recently watched preference could be added, here just random/score)
+    const sortedSeen = seenVideos.sort((a, b) => scoreVideo(b) - scoreVideo(a));
+
+    // 6. Combine: Strictly show ALL unseen first, then recycled seen videos.
+    // This ensures "Infinite Scroll" works by eventually falling back to seen content.
+    return [...sortedUnseen, ...sortedSeen];
   }, []);
 
   const handleManualRefresh = useCallback(() => {
@@ -118,13 +132,9 @@ const App: React.FC = () => {
     }
   }, []); // Run once on mount
 
-  // Sync when interactions change
-  useEffect(() => {
-    if (rawVideos.length > 0) {
-      const updatedList = applySmartRecommendations(rawVideos, interactions);
-      setDisplayVideos(updatedList);
-    }
-  }, [interactions.likedIds, rawVideos, applySmartRecommendations]);
+  // Sync when interactions change (e.g. user likes a video, re-sort next time or keep stable?)
+  // Keeping stable is better for UX, so we don't shuffle while user is browsing.
+  // We only re-sort on explicit refresh or new data load.
 
   // Firestore Subscription with Background Auth
   useEffect(() => {
@@ -259,16 +269,22 @@ const App: React.FC = () => {
   // Helper Functions that integrate SmartBrain
   const playShortVideo = (v: Video, list: Video[]) => {
       SmartBrain.saveInterest(v.category);
-      setSelectedShort({ video: v, list });
+      // When playing, ensure the list passed allows for infinite scrolling
+      // We pass the currently calculated 'displayVideos' filtered by type
+      // ensuring the order matches the smart algorithm
+      const smartList = displayVideos.filter(vid => vid.video_type === 'Shorts');
+      setSelectedShort({ video: v, list: smartList });
   };
 
   const playLongVideo = (v: Video, list?: Video[]) => {
       SmartBrain.saveInterest(v.category);
-      setSelectedLong({ video: v, list: list || rawVideos.filter(rv => rv.video_type === 'Long Video') });
+      const smartList = displayVideos.filter(vid => vid.video_type === 'Long Video');
+      setSelectedLong({ video: v, list: smartList });
   };
 
   const renderContent = () => {
-    const activeVideos = displayVideos; 
+    // Filter out disliked videos from display
+    const activeVideos = displayVideos.filter(v => !interactions.dislikedIds.includes(v.id)); 
     const shortsOnly = activeVideos.filter(v => v.video_type === 'Shorts');
     const longsOnly = activeVideos.filter(v => v.video_type === 'Long Video');
 
@@ -301,7 +317,7 @@ const App: React.FC = () => {
           <Suspense fallback={null}>
             <CategoryPage 
               category={activeCategory} 
-              allVideos={displayVideos}
+              allVideos={displayVideos} // Use smart sorted list
               isSaved={interactions.savedCategoryNames.includes(activeCategory)}
               onToggleSave={() => {
                 setInteractions(p => {
@@ -399,7 +415,7 @@ const App: React.FC = () => {
       default:
         return (
           <MainContent 
-            videos={activeVideos.filter(v => !interactions.dislikedIds.includes(v.id))} 
+            videos={activeVideos} // Pass the smart sorted list directly
             categoriesList={OFFICIAL_CATEGORIES}
             interactions={interactions}
             onPlayShort={(v: Video, l: Video[]) => playShortVideo(v, shortsOnly)}

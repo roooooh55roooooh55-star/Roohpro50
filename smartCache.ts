@@ -6,17 +6,12 @@ const BUFFER_SIZE = 1.5 * 1024 * 1024;
 export const initSmartBuffering = async (videos: Video[]) => {
   if (!navigator.onLine || !videos || videos.length === 0) return;
 
-  // التركيز على أول 5 فيديوهات لعدم إرهاق المتصفح، مع إعطاء أولوية للسرعة
+  // التركيز على أول 5 فيديوهات
   const queue = [...videos].slice(0, 5); 
 
-  const bufferNext = async (index: number) => {
-    if (index >= queue.length) return;
-
-    const video = queue[index];
-    if (!video || !video.video_url || !video.video_url.startsWith('http')) {
-        await bufferNext(index + 1);
-        return;
-    }
+  // Parallel Fetching for top 3 to speed up initial load
+  const promises = queue.slice(0, 3).map(async (video) => {
+    if (!video || !video.video_url || !video.video_url.startsWith('http')) return;
 
     try {
         const publicURL = video.video_url;
@@ -35,16 +30,11 @@ export const initSmartBuffering = async (videos: Video[]) => {
             // Store this part in the 'video-previews' cache for instant reuse
             const cache = await caches.open('video-previews');
             await cache.put(publicURL, new Response(blob));
-            // console.log("تم تجهيز أول 7 ثوانٍ بنجاح!");
         }
     } catch (e) {
-      // console.warn(`Skipped buffering for ${video.id}`, e);
+      // Ignore errors for individual preloads
     }
+  });
 
-    // الانتقال للفيديو التالي في القائمة
-    await bufferNext(index + 1);
-  };
-
-  // بدء السلسلة
-  bufferNext(0);
+  await Promise.all(promises);
 };
