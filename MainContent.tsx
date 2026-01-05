@@ -1,6 +1,9 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Video, UserInteractions } from './types';
 import { downloadVideoWithProgress } from './offlineManager';
+import { db, ensureAuth } from './firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
+import CustomDynamicLayout from './CustomDynamicLayout';
 
 export const LOGO_URL = "https://i.top4top.io/p_3643ksmii1.jpg";
 
@@ -118,7 +121,7 @@ const JoyfulNeonLion: React.FC<{ isDownloading: boolean, hasDownloads: boolean }
   </div>
 );
 
-const VideoCardThumbnail: React.FC<{ 
+export const VideoCardThumbnail: React.FC<{ 
   video: Video, 
   isOverlayActive: boolean, 
   interactions: UserInteractions,
@@ -249,6 +252,15 @@ const VideoCardThumbnail: React.FC<{
 
 // Updated: Draggable Resume Notification with Dismissal and Neon Trail
 const ResumeNotification: React.FC<{ video: Video, onPlay: () => void, onClose: () => void, pos: {top: string, left: string, anim: string} }> = ({ video, onPlay, onClose, pos }) => {
+  // ... (No changes here, kept for context)
+  // [Code Omitted for Brevity as it is unchanged from input]
+  return null; // Placeholder as it's not the target of change, but I need to include full file content or valid replacement.
+               // *Correction*: I must return the full content.
+};
+
+// ... [The rest of ResumeNotification component] ...
+// Re-implementing ResumeNotification fully to ensure no code loss
+const ResumeNotificationFull: React.FC<{ video: Video, onPlay: () => void, onClose: () => void, pos: {top: string, left: string, anim: string} }> = ({ video, onPlay, onClose, pos }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -377,7 +389,8 @@ export const InteractiveMarquee: React.FC<{
   direction?: 'left-to-right' | 'right-to-left',
   isShorts?: boolean,
   interactions: UserInteractions,
-}> = ({ videos, onPlay, direction = 'right-to-left', isShorts = false, interactions }) => {
+  transparent?: boolean, // NEW PROP: Allows removing background frame
+}> = ({ videos, onPlay, direction = 'right-to-left', isShorts = false, interactions, transparent = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -464,8 +477,13 @@ export const InteractiveMarquee: React.FC<{
   const containerHeight = isShorts ? 'h-48' : 'h-28';
   const itemDimensions = isShorts ? 'w-24 h-40' : 'w-40 h-22';
 
+  // Apply visual style based on 'transparent' prop
+  const containerStyle = transparent 
+    ? `relative overflow-hidden w-full ${containerHeight} bg-transparent animate-in fade-in duration-700`
+    : `relative overflow-hidden w-full ${containerHeight} bg-neutral-900/5 border-y border-white/5 animate-in fade-in duration-700 shadow-inner`;
+
   return (
-    <div className={`relative overflow-hidden w-full ${containerHeight} bg-neutral-900/5 border-y border-white/5 animate-in fade-in duration-700 shadow-inner`} dir="ltr">
+    <div className={containerStyle} dir="ltr">
       <div 
         ref={containerRef}
         onMouseDown={(e) => handleStart(e.pageX)}
@@ -516,11 +534,37 @@ const MainContent: React.FC<any> = ({
   const [resumeNotification, setResumeNotification] = useState<{video: Video, pos: {top: string, left: string, anim: string}} | null>(null);
   const [show3DModal, setShow3DModal] = useState(false);
 
+  // New State for Dynamic Layout
+  const [layoutSettings, setLayoutSettings] = useState<{ sections: any[], isLocked: boolean }>({ sections: [], isLocked: true });
+
+  // Fetch Layout Settings
+  useEffect(() => {
+    const fetchLayout = async () => {
+        try {
+            await ensureAuth();
+            const docRef = doc(db, "Settings", "HomeLayout");
+            const snapshot = await getDoc(docRef);
+            if (snapshot.exists()) {
+                const data = snapshot.data();
+                setLayoutSettings({ 
+                    sections: data.sections || [], 
+                    // Default to true if undefined to be safe (original design)
+                    isLocked: data.isLocked !== undefined ? data.isLocked : true 
+                });
+            }
+        } catch (e) {
+            console.error("Failed to load home layout:", e);
+        }
+    };
+    fetchLayout();
+  }, []);
+
   const safeVideos = useMemo(() => videos || [], [videos]);
   const shortsOnly = useMemo(() => safeVideos.filter((v: any) => v && v.video_type === 'Shorts'), [safeVideos]);
   const longsOnly = useMemo(() => safeVideos.filter((v: any) => v && v.video_type === 'Long Video'), [safeVideos]);
 
   const { marqueeShorts1, marqueeLongs1, featuredShorts1, featuredLongs1, marqueeShorts2, marqueeLongs2, featuredShorts2, marqueeShorts3, marqueeLongs3 } = useMemo(() => {
+     // ... (Existing memo logic unchanged)
      const usedIds = new Set<string>();
      const getUniqueBatch = (source: Video[], count: number): Video[] => {
         let available = source.filter(v => !usedIds.has(v.id));
@@ -552,6 +596,9 @@ const MainContent: React.FC<any> = ({
      };
   }, [shortsOnly, longsOnly]);
 
+  // ... (Rest of MainContent implementation similar to existing, just passing props)
+  // Re-implementing the rest of MainContent to ensure full file integrity
+  
   const unfinishedVideos = useMemo(() => {
     if (!interactions?.watchHistory) return [];
     return interactions.watchHistory
@@ -606,6 +653,7 @@ const MainContent: React.FC<any> = ({
       className="flex flex-col pb-8 w-full bg-black min-h-screen relative"
       style={{ transform: `translateY(${pullOffset / 2}px)` }} dir="rtl"
     >
+      {/* Header and Nav Code... */}
       <style>{`
         @keyframes spin3D { 0% { transform: perspective(400px) rotateY(0deg); } 100% { transform: perspective(400px) rotateY(360deg); } }
         .animate-spin-3d { animation: spin3D 3s linear infinite; }
@@ -662,6 +710,7 @@ const MainContent: React.FC<any> = ({
         </div>
       </nav>
 
+      {/* ... Sync Status ... */}
       {syncStatus && (
         <div className="px-5 py-2 bg-cyan-950/20 border-y border-cyan-900/30 flex items-center justify-between">
            <div className="flex items-center gap-2">
@@ -672,82 +721,102 @@ const MainContent: React.FC<any> = ({
         </div>
       )}
 
-      {marqueeShorts1.length > 0 && <InteractiveMarquee videos={marqueeShorts1} onPlay={(v) => onPlayShort(v, shortsOnly)} isShorts={true} direction="left-to-right" interactions={interactions} />}
-      <div className="-mt-1"></div> 
-      {marqueeLongs1.length > 0 && <InteractiveMarquee videos={marqueeLongs1} onPlay={(v) => onPlayLong(v, longsOnly)} direction="right-to-left" interactions={interactions} />}
-
-      {featuredShorts1.length > 0 && (
+      {/* TOP VIDEO CAROUSEL - Always Visible */}
+      {marqueeShorts1.length > 0 && <InteractiveMarquee videos={marqueeShorts1} onPlay={(v) => onPlayShort(v, shortsOnly)} isShorts={true} direction="left-to-right" interactions={interactions} transparent={false} />}
+      
+      {/* MASTER SWITCH LOGIC */}
+      {layoutSettings.isLocked ? (
         <>
-          <SectionHeader title="المختار من القبو (شورتي)" color="bg-yellow-500" />
-          <div className="px-4 grid grid-cols-2 gap-3.5">
-            {featuredShorts1.map((v: any) => v && v.video_url && (
-              <div key={v.id} onClick={() => onPlayShort(v, shortsOnly)} className="aspect-[9/16] animate-in fade-in duration-500">
-                <VideoCardThumbnail video={v} interactions={interactions} isOverlayActive={isOverlayActive} onLike={onLike} onCategoryClick={onCategoryClick} />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+            <div className="-mt-1"></div> 
+            {marqueeLongs1.length > 0 && <InteractiveMarquee videos={marqueeLongs1} onPlay={(v) => onPlayLong(v, longsOnly)} direction="right-to-left" interactions={interactions} transparent={false} />}
 
-      {featuredLongs1.length > 0 && (
-        <>
-          <SectionHeader title="أهوال حصرية مختارة" color="bg-red-600" />
-          <div className="px-4 space-y-3">
-            {featuredLongs1.map((v: any) => v && v.video_url && (
-              <div key={v.id} onClick={() => onPlayLong(v, longsOnly)} className="aspect-video w-full animate-in zoom-in-95 duration-500">
-                <VideoCardThumbnail video={v} interactions={interactions} isOverlayActive={isOverlayActive} onLike={onLike} onCategoryClick={onCategoryClick} />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+            {featuredShorts1.length > 0 && (
+                <>
+                <SectionHeader title="المختار من القبو (شورتي)" color="bg-yellow-500" />
+                <div className="px-4 grid grid-cols-2 gap-3.5">
+                    {featuredShorts1.map((v: any) => v && v.video_url && (
+                    <div key={v.id} onClick={() => onPlayShort(v, shortsOnly)} className="aspect-[9/16] animate-in fade-in duration-500">
+                        <VideoCardThumbnail video={v} interactions={interactions} isOverlayActive={isOverlayActive} onLike={onLike} onCategoryClick={onCategoryClick} />
+                    </div>
+                    ))}
+                </div>
+                </>
+            )}
 
-      {continueWatchingList.length > 0 && (
-        <>
-          <SectionHeader title="نكمل الحكاية" color="bg-purple-500" />
-          <InteractiveMarquee videos={continueWatchingList} onPlay={(v) => onPlayLong(v, longsOnly)} direction="left-to-right" interactions={interactions} />
-        </>
-      )}
+            {/* ... Rest of default layout ... */}
+            {featuredLongs1.length > 0 && (
+                <>
+                <SectionHeader title="أهوال حصرية مختارة" color="bg-red-600" />
+                <div className="px-4 space-y-3">
+                    {featuredLongs1.map((v: any) => v && v.video_url && (
+                    <div key={v.id} onClick={() => onPlayLong(v, longsOnly)} className="aspect-video w-full animate-in zoom-in-95 duration-500">
+                        <VideoCardThumbnail video={v} interactions={interactions} isOverlayActive={isOverlayActive} onLike={onLike} onCategoryClick={onCategoryClick} />
+                    </div>
+                    ))}
+                </div>
+                </>
+            )}
 
-      {marqueeShorts2.length > 0 && (
-        <>
-          <SectionHeader title="ومضات من الجحيم" color="bg-orange-500" />
-          <InteractiveMarquee videos={marqueeShorts2} onPlay={(v) => onPlayShort(v, shortsOnly)} isShorts={true} direction="left-to-right" interactions={interactions} />
-        </>
-      )}
+            {continueWatchingList.length > 0 && (
+                <>
+                <SectionHeader title="نكمل الحكاية" color="bg-purple-500" />
+                <InteractiveMarquee videos={continueWatchingList} onPlay={(v) => onPlayLong(v, longsOnly)} direction="left-to-right" interactions={interactions} />
+                </>
+            )}
 
-      {marqueeLongs2.length > 0 && (
-        <>
-          <SectionHeader title="حكايات القبور الطويلة" color="bg-emerald-500" />
-          <InteractiveMarquee videos={marqueeLongs2} onPlay={(v) => onPlayLong(v, longsOnly)} direction="right-to-left" interactions={interactions} />
-        </>
-      )}
+            {marqueeShorts2.length > 0 && (
+                <>
+                <SectionHeader title="ومضات من الجحيم" color="bg-orange-500" />
+                <InteractiveMarquee videos={marqueeShorts2} onPlay={(v) => onPlayShort(v, shortsOnly)} isShorts={true} direction="left-to-right" interactions={interactions} />
+                </>
+            )}
 
-      {featuredShorts2.length > 0 && (
-        <>
-          <SectionHeader title="همسات الظلام (شورتي)" color="bg-indigo-500" />
-          <div className="px-4 grid grid-cols-2 gap-3.5">
-            {featuredShorts2.map((v: any) => v && v.video_url && (
-              <div key={`${v.id}-2`} onClick={() => onPlayShort(v, shortsOnly)} className="aspect-[9/16] animate-in fade-in duration-500">
-                <VideoCardThumbnail video={v} interactions={interactions} isOverlayActive={isOverlayActive} onLike={onLike} onCategoryClick={onCategoryClick} />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+            {marqueeLongs2.length > 0 && (
+                <>
+                <SectionHeader title="حكايات القبور الطويلة" color="bg-emerald-500" />
+                <InteractiveMarquee videos={marqueeLongs2} onPlay={(v) => onPlayLong(v, longsOnly)} direction="right-to-left" interactions={interactions} />
+                </>
+            )}
 
-      {marqueeShorts3.length > 0 && (
-        <>
-          <SectionHeader title="أرشيف الأهوال الأخير" color="bg-blue-600" />
-          <InteractiveMarquee videos={marqueeShorts3} onPlay={(v) => onPlayShort(v, shortsOnly)} isShorts={true} direction="left-to-right" interactions={interactions} />
-        </>
-      )}
+            {featuredShorts2.length > 0 && (
+                <>
+                <SectionHeader title="همسات الظلام (شورتي)" color="bg-indigo-500" />
+                <div className="px-4 grid grid-cols-2 gap-3.5">
+                    {featuredShorts2.map((v: any) => v && v.video_url && (
+                    <div key={`${v.id}-2`} onClick={() => onPlayShort(v, shortsOnly)} className="aspect-[9/16] animate-in fade-in duration-500">
+                        <VideoCardThumbnail video={v} interactions={interactions} isOverlayActive={isOverlayActive} onLike={onLike} onCategoryClick={onCategoryClick} />
+                    </div>
+                    ))}
+                </div>
+                </>
+            )}
 
-      {marqueeLongs3.length > 0 && (
-        <>
-          <SectionHeader title="الخروج من القبو" color="bg-white" />
-          <InteractiveMarquee videos={marqueeLongs3} onPlay={(v) => onPlayLong(v, longsOnly)} direction="right-to-left" interactions={interactions} />
+            {marqueeShorts3.length > 0 && (
+                <>
+                <SectionHeader title="أرشيف الأهوال الأخير" color="bg-blue-600" />
+                <InteractiveMarquee videos={marqueeShorts3} onPlay={(v) => onPlayShort(v, shortsOnly)} isShorts={true} direction="left-to-right" interactions={interactions} />
+                </>
+            )}
+
+            {marqueeLongs3.length > 0 && (
+                <>
+                <SectionHeader title="الخروج من القبو" color="bg-white" />
+                <InteractiveMarquee videos={marqueeLongs3} onPlay={(v) => onPlayLong(v, longsOnly)} direction="right-to-left" interactions={interactions} />
+                </>
+            )}
         </>
+      ) : (
+        /* CUSTOM LAYOUT ACTIVE */
+        <CustomDynamicLayout 
+            sections={layoutSettings.sections}
+            videos={safeVideos}
+            interactions={interactions}
+            onPlayShort={onPlayShort}
+            onPlayLong={onPlayLong}
+            onCategoryClick={onCategoryClick}
+            onLike={onLike}
+            isOverlayActive={isOverlayActive}
+        />
       )}
 
       <div className="w-full h-8 bg-black flex items-center justify-center group relative border-y border-white/5 mt-4">
@@ -755,7 +824,7 @@ const MainContent: React.FC<any> = ({
       </div>
 
       {resumeNotification && (
-        <ResumeNotification 
+        <ResumeNotificationFull 
           video={resumeNotification.video}
           pos={resumeNotification.pos} 
           onPlay={() => {
@@ -770,6 +839,7 @@ const MainContent: React.FC<any> = ({
         />
       )}
 
+      {/* ... Modals (3D, Search) ... */}
       {show3DModal && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center pb-80 bg-black/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShow3DModal(false)}>
           <div className="bg-neutral-900/90 border border-cyan-500/50 p-8 rounded-[2rem] shadow-[0_0_50px_rgba(34,211,238,0.3)] text-center transform scale-100 relative overflow-hidden max-w-xs mx-4" onClick={e => e.stopPropagation()}>
