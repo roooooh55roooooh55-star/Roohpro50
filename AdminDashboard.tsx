@@ -2,12 +2,13 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Video, VideoType } from './types';
 import { db, ensureAuth } from './firebaseConfig';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { SYSTEM_CONFIG } from './TechSpecs';
 
 const LOGO_URL = "https://i.top4top.io/p_3643ksmii1.jpg";
 
-// CHANGED: Updated to the correct Worker and Public R2 URLs provided
-const R2_WORKER_URL = "https://bold-king-9a8e.roohr4046.workers.dev";
-const R2_PUBLIC_URL = "https://pub-82d22c4b0b8b4b1e8a32d6366b7546c8.r2.dev";
+// CHANGED: Using values from TechSpecs to ensure consistency
+const R2_WORKER_URL = SYSTEM_CONFIG.cloudflare.workerUrl;
+const R2_PUBLIC_URL = SYSTEM_CONFIG.cloudflare.publicUrl;
 
 // --- Helpers ---
 const getDeterministicStats = (seed: string) => {
@@ -144,7 +145,6 @@ const AIAvatarManager: React.FC = () => {
         
         await new Promise<void>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
-            // Use path-based routing for R2 Worker
             const targetUrl = `${R2_WORKER_URL}/${encodeURIComponent(fileName)}`;
             
             xhr.open('PUT', targetUrl, true);
@@ -528,20 +528,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       // 1. Upload Video to R2 (if new file selected)
       if (file) {
-        // Sanitize name STRICTLY to avoid Network Errors with Worker
         const cleanName = file.name.replace(/[^\w.-]/g, '');
         const safeFileName = `vid_${Date.now()}_${cleanName}`;
         
-        // Use XHR for R2 Upload via Cloudflare Worker
         await new Promise<void>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
-            // Use path-based routing for R2 Worker
             const targetUrl = `${R2_WORKER_URL}/${encodeURIComponent(safeFileName)}`;
             
             xhr.open('PUT', targetUrl, true);
-            // Disable credentials to prevent CORS issues with Cookies if worker doesn't support them
             xhr.withCredentials = false;
-            // Explicitly set content type, default to binary if unknown
             xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
             
             xhr.upload.onprogress = (e) => {
@@ -560,13 +555,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             };
 
             xhr.onerror = () => {
-                // More detailed error guess
                 reject(new Error('Network Error: CORS failed or Worker URL unreachable.'));
             };
             xhr.send(file);
         });
 
-        // Construct Public R2 URL
         finalVideoUrl = `${R2_PUBLIC_URL}/${safeFileName}`;
       } else if (!editingId) {
          finalVideoUrl = newVideo.redirect_url || "";

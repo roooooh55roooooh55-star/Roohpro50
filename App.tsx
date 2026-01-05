@@ -7,6 +7,7 @@ import MainContent from './MainContent';
 import { downloadVideoWithProgress, removeVideoFromCache } from './offlineManager';
 import { initSmartBuffering } from './smartCache';
 import { SmartBrain } from './SmartLogic'; // Import SmartBrain
+import { SYSTEM_CONFIG } from './TechSpecs'; // Use official category source
 
 const ShortsPlayerOverlay = lazy(() => import('./ShortsPlayerOverlay'));
 const LongPlayerOverlay = lazy(() => import('./LongPlayerOverlay'));
@@ -21,16 +22,7 @@ const OfflinePage = lazy(() => import('./OfflinePage'));
 const UnwatchedPage = lazy(() => import('./UnwatchedPage'));
 
 // 1. التصنيفات الرسمية الـ 8 (يجب كتابتها حرفياً)
-export const OFFICIAL_CATEGORIES = [
-  'هجمات مرعبة', 
-  'رعب حقيقي', 
-  'رعب الحيوانات', 
-  'أخطر المشاهد',
-  'أهوال مرعبة', 
-  'رعب كوميدي', 
-  'لحظات مرعبة', 
-  'صدمه'
-];
+export const OFFICIAL_CATEGORIES = SYSTEM_CONFIG.officialCategories;
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.HOME);
