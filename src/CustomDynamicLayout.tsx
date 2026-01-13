@@ -24,7 +24,7 @@ const CustomDynamicLayout: React.FC<CustomDynamicLayoutProps> = ({
   isOverlayActive
 }) => {
   
-  // Advanced distribution logic to ensure NO duplicates across the entire page
+  // Advanced distribution logic to ensure NO duplicates unless necessary
   const distributedContent = useMemo(() => {
     const usedIds = new Set<string>();
     const distribution: Record<string, Video[]> = {};
@@ -32,33 +32,36 @@ const CustomDynamicLayout: React.FC<CustomDynamicLayoutProps> = ({
     const shortsOnly = videos.filter(v => v.video_type === 'Shorts');
     const longsOnly = videos.filter(v => v.video_type === 'Long Video');
 
-    // Helper to pick unique videos and mark them as used
-    // STRICT MODE: If we run out of unique videos, we return an empty array (or partial).
-    // We NEVER reuse videos in this layout.
-    const pickUnique = (pool: Video[], count: number): Video[] => {
+    // Helper to pick unique videos first
+    const pickVideos = (pool: Video[], count: number): Video[] => {
+        if (!pool || pool.length === 0) return [];
+
         const available = pool.filter(v => !usedIds.has(v.id));
         
-        // Shuffle available to keep it fresh
-        const shuffled = [...available].sort(() => 0.5 - Math.random());
-        
-        const selected = shuffled.slice(0, count);
+        let selected = available.slice(0, count);
         selected.forEach(v => usedIds.add(v.id));
+
+        // Recycle if needed
+        if (selected.length < count) {
+            const needed = count - selected.length;
+            const recycled = pool.filter(v => !selected.includes(v)).sort(() => 0.5 - Math.random());
+            selected = [...selected, ...recycled.slice(0, needed)];
+        }
+
         return selected;
     };
 
     sections.forEach((section, index) => {
-        // Use a composite key for the map in case IDs are missing or duplicated in config
         const key = section.id || `section-${index}`;
         
         if (section.type === 'long_video') {
-            distribution[key] = pickUnique(longsOnly, 1);
+            distribution[key] = pickVideos(longsOnly, 1);
         } else if (section.type === 'shorts_grid') {
-            distribution[key] = pickUnique(shortsOnly, 4);
+            distribution[key] = pickVideos(shortsOnly, 4);
         } else if (section.type === 'long_slider') {
-            distribution[key] = pickUnique(longsOnly, 10);
+            distribution[key] = pickVideos(longsOnly, 10);
         } else if (section.type === 'slider_left' || section.type === 'slider_right') {
-             // Mixed/Shorts sliders
-             distribution[key] = pickUnique(videos, 12);
+             distribution[key] = pickVideos(videos, 10);
         }
     });
 
@@ -81,8 +84,8 @@ const CustomDynamicLayout: React.FC<CustomDynamicLayoutProps> = ({
                 width: `${section.width}%`, 
                 height: section.height ? `${section.height}px` : 'auto',
                 minHeight: section.type.includes('slider') ? 'auto' : `${section.height}px`,
-                marginTop: `${section.marginTop || 0}px`, // Vertical Shift Logic
-                marginBottom: '20px' // Base spacing
+                marginTop: `${section.marginTop || 0}px`,
+                marginBottom: '20px'
             }}
             >
             {/* --- LONG VIDEO BLOCK --- */}
@@ -105,7 +108,6 @@ const CustomDynamicLayout: React.FC<CustomDynamicLayoutProps> = ({
                 <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-2">
                 {sectionVideos.slice(0, 4).map((v, i) => {
                     const isLiked = interactions?.likedIds?.includes(v.id);
-                    // Pass index + video ID to generate absolutely diverse colors for neighbors
                     const neonStyle = getNeonColor(v.id, i + idx); 
                     return (
                     <div key={v.id} onClick={() => onPlayShort(v, videos.filter(x => x.video_type === 'Shorts'))} className={`rounded-xl overflow-hidden relative border-2 ${neonStyle.border} bg-black`}>
@@ -118,7 +120,6 @@ const CustomDynamicLayout: React.FC<CustomDynamicLayoutProps> = ({
                             playsInline 
                         />
                         
-                        {/* Heart Button Overlay */}
                         <div className="absolute top-1 right-1 z-20">
                             <button 
                             onClick={(e) => { 
@@ -141,19 +142,14 @@ const CustomDynamicLayout: React.FC<CustomDynamicLayoutProps> = ({
             {/* --- SLIDER LEFT TO RIGHT (SHORTS) --- */}
             {section.type === 'slider_left' && (
                 <div className="w-full h-full flex flex-col justify-center py-2">
-                {section.label && (
-                    <div className="px-2 mb-1 flex items-center gap-2">
-                        <div className="w-1.5 h-3 bg-emerald-500 rounded-full"></div>
-                        <h3 className="text-[10px] font-black text-white">{section.label}</h3>
-                    </div>
-                )}
+                {/* LABEL REMOVED */}
                 <InteractiveMarquee 
                     videos={sectionVideos} 
                     onPlay={(v) => v.video_type === 'Shorts' ? onPlayShort(v, videos) : onPlayLong(v)} 
                     direction="left-to-right" 
                     interactions={interactions}
                     isShorts={true}
-                    transparent={true} // Clean Look
+                    transparent={true} 
                     onLike={onLike}
                 />
                 </div>
@@ -162,19 +158,14 @@ const CustomDynamicLayout: React.FC<CustomDynamicLayoutProps> = ({
             {/* --- SLIDER RIGHT TO LEFT (SHORTS) --- */}
             {section.type === 'slider_right' && (
                 <div className="w-full h-full flex flex-col justify-center py-2">
-                {section.label && (
-                    <div className="px-2 mb-1 flex items-center gap-2">
-                        <div className="w-1.5 h-3 bg-purple-500 rounded-full"></div>
-                        <h3 className="text-[10px] font-black text-white">{section.label}</h3>
-                    </div>
-                )}
+                {/* LABEL REMOVED */}
                 <InteractiveMarquee 
                     videos={sectionVideos} 
                     onPlay={(v) => v.video_type === 'Shorts' ? onPlayShort(v, videos) : onPlayLong(v)} 
                     direction="right-to-left" 
                     interactions={interactions}
-                    isShorts={true} // Actually mixed but styled as portraits usually
-                    transparent={true} // Clean Look
+                    isShorts={true} 
+                    transparent={true} 
                     onLike={onLike}
                 />
                 </div>
@@ -183,19 +174,14 @@ const CustomDynamicLayout: React.FC<CustomDynamicLayoutProps> = ({
             {/* --- LONG VIDEO SLIDER --- */}
             {section.type === 'long_slider' && (
                 <div className="w-full h-full flex flex-col justify-center py-2">
-                {section.label && (
-                    <div className="px-2 mb-1 flex items-center gap-2">
-                        <div className="w-1.5 h-3 bg-red-600 rounded-full"></div>
-                        <h3 className="text-[10px] font-black text-white">{section.label}</h3>
-                    </div>
-                )}
+                {/* LABEL REMOVED */}
                 <InteractiveMarquee 
                     videos={sectionVideos} 
                     onPlay={(v) => onPlayLong(v)} 
                     direction="right-to-left" 
                     interactions={interactions}
-                    isShorts={false} // Wide landscape mode
-                    transparent={true} // Clean Look
+                    isShorts={false} 
+                    transparent={true} 
                     onLike={onLike}
                 />
                 </div>

@@ -72,14 +72,21 @@ const App: React.FC = () => {
         ...userInteractions.watchHistory.filter(w => w.progress > 0.1).map(w => w.id)
     ]);
 
-    const unseenVideos = videos.filter(v => !seenIds.has(v.id));
+    // 1. Split into Unseen and Seen
+    let unseenVideos = videos.filter(v => !seenIds.has(v.id));
     const seenVideos = videos.filter(v => seenIds.has(v.id));
     const userInterests = SmartBrain.getTopInterests();
 
+    // 2. Shuffle Unseen videos to ensure "New & Diverse" on every refresh
+    // This addresses the user requirement to see different videos on pull-to-refresh
+    unseenVideos = unseenVideos.sort(() => Math.random() - 0.5);
+
     const scoreVideo = (v: Video) => {
-        let score = Math.random() * 10; 
+        let score = 0; 
         if (userInterests.includes(v.category)) score += 20;
         if (v.is_trending) score += 5;
+        // Small random factor to keep interest-based videos slightly mixed
+        score += Math.random() * 5; 
         return score;
     };
 
@@ -95,11 +102,10 @@ const App: React.FC = () => {
     setIsRefreshing(true);
     showToast("جاري تجهيز كوابيس جديدة...");
 
-    // 1. Calculate new list
+    // 1. Calculate new list (Now includes shuffling)
     const newOrder = applySmartRecommendations(rawVideos, interactions);
     
     // 2. Preload FIRST 3 videos of the NEW list (7 seconds buffer)
-    // This prevents black screen when we swap
     if (newOrder.length > 0) {
         await initSmartBuffering(newOrder.slice(0, 3));
     }

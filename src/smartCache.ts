@@ -1,7 +1,7 @@
 import { Video } from './types';
 
-// حجم الجزء الذي سيتم تحميله (2 ميجابايت يكفي لـ 7-10 ثواني بجودة عالية)
-const CHUNK_SIZE = 2 * 1024 * 1024; 
+// حجم الجزء الذي سيتم تحميله (3 ميجابايت يكفي لـ 10-15 ثانية بجودة عالية)
+const CHUNK_SIZE = 3 * 1024 * 1024; 
 const VIDEO_CACHE_NAME = 'rooh-video-previews-v2';
 
 /**
@@ -20,22 +20,26 @@ export const preloadVideoChunk = async (url: string): Promise<boolean> => {
     }
 
     // طلب أول جزء من الملف
+    // FIX: Added credentials: 'omit' to prevent CORS errors with R2
+    // FIX: Added cache: 'no-store' to ensure we fetch the range specifically
     const response = await fetch(url, {
       headers: {
         'Range': `bytes=0-${CHUNK_SIZE}`
       },
-      mode: 'cors'
+      mode: 'cors',
+      credentials: 'omit', 
+      cache: 'no-store'
     });
 
     if (response.ok || response.status === 206) {
       // نقوم بتخزين الاستجابة في الكاش لاستخدامها لاحقاً
-      // ملاحظة: المتصفح سيستخدم هذا الكاش تلقائياً عند طلب الفيديو لنفس النطاق
       await cache.put(url, response.clone());
       return true;
     }
     return false;
   } catch (e) {
-    console.warn("Preload failed for:", url);
+    // Changed to debug to avoid cluttering console with expected network aborts
+    console.debug("Smart Cache skipped (Fallback to direct stream):", url.split('/').pop());
     return false;
   }
 };

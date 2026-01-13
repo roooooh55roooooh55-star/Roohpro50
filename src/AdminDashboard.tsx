@@ -48,17 +48,16 @@ const LayoutEditor: React.FC<{ initialVideos: Video[] }> = ({ initialVideos }) =
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
-  // Helper to get random videos for preview
+  // Helper to get random REAL videos for preview
   const getPreviewVideos = (count: number, type: 'Shorts' | 'Long Video' | 'Mixed') => {
       let filtered = initialVideos;
       if (type !== 'Mixed') {
           filtered = initialVideos.filter(v => v.video_type === type);
       }
-      if (filtered.length === 0) return initialVideos.slice(0, count); // Fallback
+      if (filtered.length === 0) return initialVideos.slice(0, count); 
       return filtered.sort(() => 0.5 - Math.random()).slice(0, count);
   };
 
-  // 1. Fetch Data
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -76,9 +75,8 @@ const LayoutEditor: React.FC<{ initialVideos: Video[] }> = ({ initialVideos }) =
     fetchSettings();
   }, []);
 
-  // 2. Add Section
   const addSection = (type: string, label: string) => {
-    if (isLocked) return alert("النظام مغلق! قم بفتح القفل أولاً لتعديل التصميم.");
+    if (isLocked) return alert("النظام مغلق! قم بفتح القفل أولاً.");
     const newSection = {
       id: Date.now().toString(),
       type,
@@ -93,31 +91,25 @@ const LayoutEditor: React.FC<{ initialVideos: Video[] }> = ({ initialVideos }) =
     }, 100);
   };
 
-  // 3. Duplicate Section
   const duplicateSection = (e: React.MouseEvent, section: any) => {
       e.stopPropagation();
       if (isLocked) return;
-      
       const newSection = {
           ...section,
-          id: Date.now().toString() + Math.floor(Math.random() * 1000), // Ensure unique ID
+          id: Date.now().toString() + Math.floor(Math.random() * 1000), 
           label: section.label + " (نسخة)"
       };
-
       const index = layout.findIndex(s => s.id === section.id);
       const newLayout = [...layout];
-      // Insert after the current item
       newLayout.splice(index + 1, 0, newSection);
       setLayout(newLayout);
   };
 
-  // 4. Update Dimensions/Text
   const updateSection = (id: string, key: string, value: any) => {
     if (isLocked) return;
     setLayout(layout.map(s => s.id === id ? { ...s, [key]: value } : s));
   };
 
-  // 5. Save & Lock Logic
   const saveLayout = async () => {
     setLoading(true);
     try {
@@ -127,15 +119,14 @@ const LayoutEditor: React.FC<{ initialVideos: Video[] }> = ({ initialVideos }) =
         isLocked: isLocked, 
         lastUpdated: serverTimestamp()
       });
-      alert(isLocked ? "تم الحفظ: الوضع الطبيعي مفعل (الأسماء محفوظة)" : "تم الحفظ: وضع التعديل مفعل");
+      alert(isLocked ? "تم الحفظ: الوضع الطبيعي" : "تم الحفظ: وضع التعديل");
     } catch (e) {
-      alert("خطأ في الاتصال بفايربيز");
+      alert("خطأ في الحفظ");
     } finally {
       setLoading(false);
     }
   };
 
-  // 6. Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, position: number) => {
     if (isLocked) return;
     dragItem.current = position;
@@ -151,264 +142,68 @@ const LayoutEditor: React.FC<{ initialVideos: Video[] }> = ({ initialVideos }) =
   const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
     e.currentTarget.style.opacity = '1';
     if (isLocked || dragItem.current === null || dragOverItem.current === null) return;
-    
     const newLayout = [...layout];
     const draggedItemContent = newLayout[dragItem.current];
     newLayout.splice(dragItem.current, 1);
     newLayout.splice(dragOverItem.current, 0, draggedItemContent);
-    
     dragItem.current = null;
     dragOverItem.current = null;
     setLayout(newLayout);
   };
 
   return (
-    <div className="p-4 sm:p-8 animate-in fade-in duration-500 pb-[1200px] min-h-[150vh]">
-        
-        {/* COMPACT UNIFIED HEADER (Lock Left | Toolbar Middle | Title Right) */}
+    <div className="p-4 sm:p-8 animate-in fade-in duration-500 pb-[500px]">
+        {/* Header Controls */}
         <div className="bg-neutral-900/95 border border-purple-500/30 p-2 rounded-2xl shadow-[0_0_30px_rgba(168,85,247,0.1)] mb-8 flex items-center justify-between sticky top-0 z-[60] backdrop-blur-xl gap-2 overflow-hidden">
-            
-            {/* RIGHT: Title */}
             <div className="shrink-0 px-3 border-l border-white/10 hidden sm:block">
                 <h1 className="text-sm font-black text-purple-400">محرر الواجهة</h1>
             </div>
-
-            {/* MIDDLE: Scrollable Toolbar */}
             <div className={`flex-1 overflow-x-auto scrollbar-hide flex items-center gap-2 px-2 transition-all duration-300 ${isLocked ? "opacity-50 grayscale pointer-events-none" : "opacity-100"}`}>
-                <button onClick={() => addSection('long_video', 'فيديو طويل')} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg hover:bg-cyan-600/20 text-cyan-400 border border-white/5 shrink-0 whitespace-nowrap">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-                    <span className="text-[10px] font-bold">فيديو</span>
-                </button>
-
-                <button onClick={() => addSection('shorts_grid', 'مربعات 2×2')} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg hover:bg-purple-600/20 text-purple-400 border border-white/5 shrink-0 whitespace-nowrap">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-                    <span className="text-[10px] font-bold">شبكة</span>
-                </button>
-
-                <button onClick={() => addSection('long_slider', 'شريط طويل')} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg hover:bg-red-600/20 text-red-400 border border-white/5 shrink-0 whitespace-nowrap">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                    <span className="text-[10px] font-bold">شريط</span>
-                </button>
-
-                <button onClick={() => addSection('slider_left', 'شريط L-R')} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg hover:bg-emerald-600/20 text-emerald-400 border border-white/5 shrink-0 whitespace-nowrap">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-                    <span className="text-[10px] font-bold">L-R</span>
-                </button>
-
-                <button onClick={() => addSection('slider_right', 'شريط R-L')} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg hover:bg-amber-600/20 text-amber-400 border border-white/5 shrink-0 whitespace-nowrap">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16l-4-4m0 0l4-4m-4 4h18"/></svg>
-                    <span className="text-[10px] font-bold">R-L</span>
-                </button>
+                <button onClick={() => addSection('long_video', 'فيديو طويل')} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg hover:bg-cyan-600/20 text-cyan-400 border border-white/5 shrink-0 whitespace-nowrap"><span className="text-[10px] font-bold">فيديو</span></button>
+                <button onClick={() => addSection('shorts_grid', 'مربعات 2×2')} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg hover:bg-purple-600/20 text-purple-400 border border-white/5 shrink-0 whitespace-nowrap"><span className="text-[10px] font-bold">شبكة</span></button>
+                <button onClick={() => addSection('long_slider', 'شريط طويل')} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg hover:bg-red-600/20 text-red-400 border border-white/5 shrink-0 whitespace-nowrap"><span className="text-[10px] font-bold">شريط</span></button>
+                <button onClick={() => addSection('slider_left', 'شريط L-R')} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg hover:bg-emerald-600/20 text-emerald-400 border border-white/5 shrink-0 whitespace-nowrap"><span className="text-[10px] font-bold">L-R</span></button>
+                <button onClick={() => addSection('slider_right', 'شريط R-L')} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg hover:bg-amber-600/20 text-amber-400 border border-white/5 shrink-0 whitespace-nowrap"><span className="text-[10px] font-bold">R-L</span></button>
             </div>
-
-            {/* LEFT: Actions (Lock & Save) */}
             <div className="flex items-center gap-2 shrink-0 border-r border-white/10 pr-2">
-                <button 
-                  onClick={() => setIsLocked(!isLocked)}
-                  className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${
-                    isLocked 
-                    ? "bg-red-600/10 text-red-500 border border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]" 
-                    : "bg-green-600/10 text-green-500 border border-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.2)]"
-                  }`}
-                  title={isLocked ? "مغلق" : "مفتوح"}
-                >
-                  {isLocked ? (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                  ) : (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
-                  )}
-                </button>
-
-                <button 
-                  onClick={saveLayout} 
-                  disabled={loading}
-                  className="flex items-center justify-center w-10 h-10 bg-purple-600 hover:bg-purple-500 text-white rounded-xl shadow-lg active:scale-95 transition-all"
-                  title="حفظ"
-                >
-                  {loading ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-                  )}
-                </button>
+                <button onClick={() => setIsLocked(!isLocked)} className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${isLocked ? "bg-red-600/10 text-red-500 border border-red-500/50" : "bg-green-600/10 text-green-500 border border-green-500/50"}`}>{isLocked ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>}</button>
+                <button onClick={saveLayout} disabled={loading} className="flex items-center justify-center w-10 h-10 bg-purple-600 hover:bg-purple-500 text-white rounded-xl shadow-lg active:scale-95 transition-all">{loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>}</button>
             </div>
         </div>
 
-        {/* Layout List (Sortable & Duplicatable) */}
+        {/* Layout Items */}
         <div className="space-y-12 relative mt-8">
-            {/* Locked Overlay Hint */}
-            {isLocked && (
-                <div className="fixed inset-x-0 top-32 z-30 flex justify-center pointer-events-none">
-                    <div className="bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full flex items-center gap-2 shadow-xl animate-pulse">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span className="text-[10px] font-bold text-gray-300">أنت في وضع المعاينة (الأسماء محفوظة). افتح القفل للتعديل.</span>
-                    </div>
-                </div>
-            )}
-
+            {isLocked && <div className="fixed inset-x-0 top-32 z-30 flex justify-center pointer-events-none"><div className="bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full flex items-center gap-2 shadow-xl animate-pulse"><span className="text-[10px] font-bold text-gray-300">وضع المعاينة (Locked)</span></div></div>}
             {layout.map((section, index) => (
-                <div 
-                    key={section.id} 
-                    draggable={!isLocked}
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragEnter={(e) => handleDragEnter(e, index)}
-                    onDragEnd={handleDragEnd}
-                    className="group relative transition-all duration-300"
-                    style={{ 
-                        marginTop: `${section.marginTop || 0}px`,
-                        marginBottom: '20px' 
-                    }}
-                >
-                    {/* EDIT OVERLAY (Visible when unlocked) */}
+                <div key={section.id} draggable={!isLocked} onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} className="group relative transition-all duration-300" style={{ marginTop: `${section.marginTop || 0}px`, marginBottom: '20px' }}>
                     <div className={`absolute -top-14 left-0 right-0 z-30 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ${!isLocked ? 'pointer-events-auto' : ''}`}>
-                       <div className="bg-neutral-900/90 border border-white/20 rounded-xl p-2 flex items-center gap-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] backdrop-blur-md overflow-x-auto scrollbar-hide max-w-full">
-                           {/* Drag Handle */}
-                           <div className="cursor-grab active:cursor-grabbing p-1.5 text-gray-400 hover:text-white bg-white/5 rounded-lg shrink-0" title="اضغط واسحب للترتيب">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8h16M4 16h16"/></svg>
-                           </div>
-
-                           <div className="w-px h-6 bg-white/20 shrink-0"></div>
-
-                           {/* Label Input */}
-                           <input 
-                                type="text" 
-                                value={section.label} 
-                                onChange={(e) => updateSection(section.id, 'label', e.target.value)}
-                                className="bg-transparent text-sm text-white font-bold w-24 outline-none placeholder:text-gray-600 text-center shrink-0"
-                                placeholder="عنوان القسم..."
-                            />
-
-                           <div className="w-px h-6 bg-white/20 shrink-0"></div>
-
-                           {/* Vertical Shift (Pull) */}
-                           <div className="flex flex-col items-center w-16 shrink-0">
-                                <label className="text-[6px] text-gray-400 font-bold uppercase">إزاحة</label>
-                                <input 
-                                    type="range" min="-100" max="100" step="10"
-                                    value={section.marginTop || 0} 
-                                    onChange={(e) => updateSection(section.id, 'marginTop', parseInt(e.target.value))} 
-                                    className="w-full accent-purple-500 h-1 bg-white/20 rounded-lg cursor-pointer appearance-none" 
-                                />
-                           </div>
-
-                           <div className="w-px h-6 bg-white/20 shrink-0"></div>
-
-                           {/* Height Control */}
-                           <div className="flex items-center gap-1 bg-white/5 rounded-lg px-1 shrink-0">
-                               <button onClick={() => updateSection(section.id, 'height', (section.height || 200) - 20)} className="text-white hover:text-red-400 font-bold px-1">-</button>
-                               <span className="text-[8px] text-gray-300 w-6 text-center">H:{section.height}</span>
-                               <button onClick={() => updateSection(section.id, 'height', (section.height || 200) + 20)} className="text-white hover:text-green-400 font-bold px-1">+</button>
-                           </div>
-
-                           {/* Width Control */}
-                           <div className="flex items-center gap-1 bg-white/5 rounded-lg px-1 shrink-0">
-                               <button onClick={() => updateSection(section.id, 'width', Math.max(20, (section.width || 100) - 10))} className="text-white hover:text-red-400 font-bold px-1">-</button>
-                               <span className="text-[8px] text-gray-300 w-6 text-center">W:{section.width}%</span>
-                               <button onClick={() => updateSection(section.id, 'width', Math.min(100, (section.width || 100) + 10))} className="text-white hover:text-green-400 font-bold px-1">+</button>
-                           </div>
-
-                           <div className="w-px h-6 bg-white/20 shrink-0"></div>
-
-                           {/* Duplicate Button */}
-                           <button 
-                                onClick={(e) => duplicateSection(e, section)} 
-                                className="text-cyan-400 hover:text-cyan-300 p-1.5 bg-cyan-900/30 rounded-lg border border-cyan-500/30 hover:border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.2)] shrink-0"
-                                title="تكرار هذا القسم"
-                           >
-                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                           </button>
-
-                           {/* Delete Button */}
-                           <button 
-                                onClick={() => !isLocked && setLayout(layout.filter(s => s.id !== section.id))} 
-                                className="text-red-500 hover:text-red-400 p-1.5 bg-red-900/30 rounded-lg border border-red-500/30 hover:border-red-400 shadow-[0_0_10px_rgba(239,68,68,0.2)] shrink-0"
-                                title="حذف القسم"
-                           >
-                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                           </button>
+                       <div className="bg-neutral-900/90 border border-white/20 rounded-xl p-2 flex items-center gap-2 shadow-xl backdrop-blur-md">
+                           <div className="cursor-grab active:cursor-grabbing p-1.5 text-gray-400 hover:text-white bg-white/5 rounded-lg shrink-0"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8h16M4 16h16"/></svg></div>
+                           <input type="text" value={section.label} onChange={(e) => updateSection(section.id, 'label', e.target.value)} className="bg-transparent text-sm text-white font-bold w-24 outline-none text-center shrink-0" placeholder="عنوان..."/>
+                           <input type="range" min="-100" max="100" step="10" value={section.marginTop || 0} onChange={(e) => updateSection(section.id, 'marginTop', parseInt(e.target.value))} className="w-16 h-1 bg-gray-600 rounded-lg cursor-pointer appearance-none" />
+                           <button onClick={(e) => duplicateSection(e, section)} className="text-cyan-400 p-1.5 bg-cyan-900/30 rounded-lg"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></button>
+                           <button onClick={() => !isLocked && setLayout(layout.filter(s => s.id !== section.id))} className="text-red-500 p-1.5 bg-red-900/30 rounded-lg"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
                        </div>
                     </div>
-
-                    {/* LIVE PREVIEW CONTENT (WYSIWYG) */}
-                    <div 
-                        className={`mx-auto transition-all relative rounded-3xl ${!isLocked ? 'border-2 border-dashed border-white/20 hover:border-purple-500/50 cursor-move' : ''}`}
-                        style={{ width: `${section.width}%`, height: `${section.height}px` }}
-                    >
+                    {/* Visual Preview logic (same as before but compacted) */}
+                    <div className={`mx-auto transition-all relative rounded-3xl ${!isLocked ? 'border-2 border-dashed border-white/20 cursor-move' : ''}`} style={{ width: `${section.width}%`, height: `${section.height}px` }}>
                         {(section.type === 'slider_left' || section.type === 'slider_right') && (
                             <div className="w-full h-full flex flex-col justify-center">
-                               {section.label && (
-                                 <div className="px-4 mb-2 flex items-center gap-2">
-                                    <div className={`w-1.5 h-3.5 ${section.type === 'slider_left' ? 'bg-emerald-500' : 'bg-purple-500'} rounded-full`}></div>
-                                    <h3 className="text-xs font-black text-white">{section.label}</h3>
-                                 </div>
-                               )}
-                               <InteractiveMarquee 
-                                   videos={getPreviewVideos(10, 'Shorts')} 
-                                   onPlay={() => {}} 
-                                   isShorts={true} 
-                                   direction={section.type === 'slider_left' ? 'left-to-right' : 'right-to-left'}
-                                   interactions={mockInteractions}
-                                   transparent={true}
-                               />
+                               {section.label && <div className="px-4 mb-2 flex items-center gap-2"><div className={`w-1.5 h-3.5 ${section.type === 'slider_left' ? 'bg-emerald-500' : 'bg-purple-500'} rounded-full`}></div><h3 className="text-xs font-black text-white">{section.label}</h3></div>}
+                               <InteractiveMarquee videos={getPreviewVideos(10, 'Shorts')} onPlay={() => {}} isShorts={true} direction={section.type === 'slider_left' ? 'left-to-right' : 'right-to-left'} interactions={mockInteractions} transparent={true}/>
                             </div>
                         )}
-                        
                         {section.type === 'long_slider' && (
                             <div className="w-full h-full flex flex-col justify-center">
-                                {section.label && (
-                                 <div className="px-4 mb-2 flex items-center gap-2">
-                                    <div className="w-1.5 h-3.5 bg-red-600 rounded-full"></div>
-                                    <h3 className="text-xs font-black text-white">{section.label}</h3>
-                                 </div>
-                               )}
-                               <InteractiveMarquee 
-                                   videos={getPreviewVideos(8, 'Long Video')} 
-                                   onPlay={() => {}} 
-                                   isShorts={false} 
-                                   direction="right-to-left"
-                                   interactions={mockInteractions}
-                                   transparent={true}
-                               />
+                                {section.label && <div className="px-4 mb-2 flex items-center gap-2"><div className="w-1.5 h-3.5 bg-red-600 rounded-full"></div><h3 className="text-xs font-black text-white">{section.label}</h3></div>}
+                                <InteractiveMarquee videos={getPreviewVideos(8, 'Long Video')} onPlay={() => {}} isShorts={false} direction="right-to-left" interactions={mockInteractions} transparent={true}/>
                             </div>
                         )}
-
                         {section.type === 'long_video' && (
-                            <div className="w-full h-full p-2">
-                                {getPreviewVideos(1, 'Long Video').map(v => (
-                                    <div key={v.id} className="w-full h-full relative rounded-2xl overflow-hidden shadow-2xl">
-                                        <SafeAutoPlayVideo 
-                                            src={formatVideoSource(v)} 
-                                            className="w-full h-full object-cover opacity-80" 
-                                            muted loop playsInline 
-                                        />
-                                        <div className="absolute inset-0 border-2 border-white/10 rounded-2xl pointer-events-none"></div>
-                                        <div className="absolute bottom-4 right-4">
-                                            <h3 className="text-lg font-black text-white drop-shadow-md">{v.title}</h3>
-                                        </div>
-                                        <div className="absolute top-4 left-4 bg-red-600 px-2 py-1 rounded text-[10px] font-black text-white">PREVIEW</div>
-                                    </div>
-                                ))}
-                            </div>
+                            <div className="w-full h-full p-2">{getPreviewVideos(1, 'Long Video').map(v => (<div key={v.id} className="w-full h-full relative rounded-2xl overflow-hidden shadow-2xl"><SafeAutoPlayVideo src={formatVideoSource(v)} className="w-full h-full object-cover opacity-80" muted loop playsInline /><div className="absolute inset-0 border-2 border-white/10 rounded-2xl pointer-events-none"></div></div>))}</div>
                         )}
-
                         {section.type === 'shorts_grid' && (
-                            <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-3 p-2">
-                                {getPreviewVideos(4, 'Shorts').map(v => {
-                                    const neonStyle = getNeonColor(v.id);
-                                    return (
-                                        <div key={v.id} className={`relative rounded-xl overflow-hidden border-2 ${neonStyle.border} bg-neutral-900`}>
-                                            <SafeAutoPlayVideo 
-                                                src={formatVideoSource(v)} 
-                                                className="w-full h-full object-cover opacity-90" 
-                                                muted loop playsInline 
-                                            />
-                                            <div className="absolute bottom-1 right-1 left-1">
-                                                <p className="text-[8px] font-black text-white truncate text-center bg-black/40 backdrop-blur-sm rounded pb-0.5">{v.title}</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-3 p-2">{getPreviewVideos(4, 'Shorts').map(v => (<div key={v.id} className="relative rounded-xl overflow-hidden border-2 border-white/10 bg-neutral-900"><SafeAutoPlayVideo src={formatVideoSource(v)} className="w-full h-full object-cover opacity-90" muted loop playsInline /></div>))}</div>
                         )}
                     </div>
                 </div>
@@ -418,27 +213,328 @@ const LayoutEditor: React.FC<{ initialVideos: Video[] }> = ({ initialVideos }) =
   );
 };
 
-const SystemBlueprintViewer: React.FC = () => {
+// --- NEW COMPONENT: Avatar Media Control (Upload & URL) ---
+const AvatarMediaControl: React.FC<{ 
+    type: 'silent' | 'talking', 
+    currentUrl: string, 
+    onSave: (url: string) => void 
+}> = ({ type, currentUrl, onSave }) => {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [urlInput, setUrlInput] = useState(currentUrl);
+    const [preview, setPreview] = useState(currentUrl);
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+
+    // Sync external changes
+    useEffect(() => {
+        setUrlInput(currentUrl);
+        setPreview(currentUrl);
+    }, [currentUrl]);
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const objectUrl = URL.createObjectURL(file);
+        setPreview(objectUrl); // Immediate local preview
+
+        try {
+            // R2 Upload Logic
+            const cleanName = file.name.replace(/[^\w.-]/g, '');
+            const safeName = `avatar_${type}_${Date.now()}_${cleanName}`;
+            
+            await new Promise<void>((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                const targetUrl = `${R2_WORKER_URL}/${encodeURIComponent(safeName)}`;
+                xhr.open('PUT', targetUrl, true);
+                xhr.setRequestHeader('Content-Type', file.type);
+                
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        setUploadProgress((e.loaded / e.total) * 100);
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) resolve();
+                    else reject(new Error(`Upload failed: ${xhr.statusText}`));
+                };
+                xhr.onerror = () => reject(new Error('Network error'));
+                xhr.send(file);
+            });
+
+            const publicUrl = `${R2_PUBLIC_URL}/${safeName}`;
+            setUrlInput(publicUrl);
+            onSave(publicUrl); // Save to DB immediately
+            alert("تم رفع الفيديو بنجاح!");
+
+        } catch (error) {
+            console.error(error);
+            alert("فشل الرفع. تأكد من الاتصال.");
+            setPreview(currentUrl); // Revert on fail
+        } finally {
+            setUploading(false);
+            setUploadProgress(0);
+        }
+    };
+
+    const handleUrlBlur = () => {
+        if (urlInput !== currentUrl) {
+            onSave(urlInput);
+            setPreview(urlInput);
+        }
+    };
+
+    const borderColor = type === 'silent' ? 'border-purple-500' : 'border-cyan-500';
+    const textColor = type === 'silent' ? 'text-purple-400' : 'text-cyan-400';
+    const bgColor = type === 'silent' ? 'bg-purple-900/10' : 'bg-cyan-900/10';
+
     return (
-        <div className="p-4 sm:p-8 animate-in fade-in duration-500 pb-32">
-            <div className="bg-neutral-900 border border-blue-500/30 p-6 rounded-[2.5rem] shadow-[0_0_30px_rgba(59,130,246,0.1)] mb-8 relative overflow-hidden">
-                <h2 className="text-2xl font-black text-white italic mb-2 relative z-10">مخطط النظام (System Blueprint)</h2>
+        <div className={`p-6 rounded-[2rem] border ${borderColor}/30 ${bgColor} relative group transition-all hover:shadow-[0_0_30px_rgba(0,0,0,0.3)]`}>
+            <div className="flex items-center justify-between mb-4">
+                <h3 className={`text-xl font-black ${textColor} italic`}>
+                    {type === 'silent' ? 'فيديو السكون (Idle)' : 'فيديو الكلام (Talking)'}
+                </h3>
+                <button 
+                    onClick={() => fileInputRef.current?.click()} 
+                    disabled={uploading}
+                    className={`p-2 rounded-xl bg-black/40 border border-white/10 hover:${borderColor} transition-all active:scale-90`}
+                    title="رفع من الجهاز"
+                >
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                </button>
             </div>
-            <div className="text-white text-center">Blueprint content placeholder</div>
+
+            {/* Preview Area */}
+            <div className="aspect-square w-full bg-black rounded-2xl overflow-hidden border-2 border-white/5 relative mb-4 shadow-inner">
+                {uploading ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-20">
+                        <div className={`w-12 h-12 rounded-full border-4 border-t-transparent animate-spin ${borderColor}`}></div>
+                        <span className="mt-2 text-[10px] font-bold text-white">{Math.round(uploadProgress)}%</span>
+                    </div>
+                ) : (
+                    <video 
+                        src={preview} 
+                        className="w-full h-full object-cover" 
+                        muted loop autoPlay playsInline 
+                        key={preview} // Force re-render on change
+                        onError={(e) => e.currentTarget.style.display = 'none'}
+                    />
+                )}
+                {!preview && !uploading && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
+                        <svg className="w-16 h-16 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    </div>
+                )}
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileSelect} 
+                    accept="video/*" 
+                    className="hidden" 
+                />
+            </div>
+
+            {/* URL Input */}
+            <div className="relative">
+                <input 
+                    type="text" 
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    onBlur={handleUrlBlur}
+                    placeholder="أو ضع رابط مباشر هنا..."
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-mono outline-none focus:border-white/40 transition-colors"
+                />
+                <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full ${preview ? 'bg-green-500 shadow-[0_0_5px_lime]' : 'bg-red-500'}`}></div>
+            </div>
         </div>
     );
 };
 
+// --- SYSTEM PAGE (Formerly Blueprint) ---
+const AI_System_Manager: React.FC = () => {
+    const [silentUrl, setSilentUrl] = useState('');
+    const [talkingUrl, setTalkingUrl] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    // Load initial settings
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                await ensureAuth();
+                const docRef = doc(db, "settings", "ai_avatar");
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    setSilentUrl(data.silent_url || '');
+                    setTalkingUrl(data.talking_url || '');
+                }
+            } catch (e) {
+                console.error("Failed to load AI settings", e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadSettings();
+    }, []);
+
+    const saveSettings = async (field: 'silent_url' | 'talking_url', value: string) => {
+        try {
+            await ensureAuth();
+            await setDoc(doc(db, "settings", "ai_avatar"), {
+                [field]: value,
+                lastUpdated: serverTimestamp()
+            }, { merge: true });
+            
+            if (field === 'silent_url') setSilentUrl(value);
+            else setTalkingUrl(value);
+            
+        } catch (e) {
+            console.error("Failed to save setting", e);
+            alert("فشل حفظ الإعدادات في قاعدة البيانات.");
+        }
+    };
+
+    if (loading) return <div className="p-12 text-center text-gray-500 font-black animate-pulse">جاري تحميل نظام المساعد...</div>;
+
+    return (
+        <div className="p-4 sm:p-8 animate-in fade-in duration-500 pb-32">
+            <div className="bg-neutral-900 border border-blue-500/30 p-6 rounded-[2.5rem] shadow-[0_0_30px_rgba(59,130,246,0.1)] mb-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-blue-600/10 blur-3xl rounded-full"></div>
+                <h2 className="text-3xl font-black text-white italic mb-2 relative z-10">نظام المساعد (AI System)</h2>
+                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest relative z-10">Oracle Avatar Configuration Protocol</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <AvatarMediaControl 
+                    type="silent" 
+                    currentUrl={silentUrl} 
+                    onSave={(url) => saveSettings('silent_url', url)} 
+                />
+                <AvatarMediaControl 
+                    type="talking" 
+                    currentUrl={talkingUrl} 
+                    onSave={(url) => saveSettings('talking_url', url)} 
+                />
+            </div>
+
+            <div className="mt-8 p-4 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-center">
+                <p className="text-[10px] text-yellow-500/70 font-bold">
+                    ملاحظة: التغييرات هنا تنعكس فوراً على جميع المستخدمين. تأكد من أن الروابط تعمل بشكل صحيح (Direct MP4).
+                </p>
+            </div>
+        </div>
+    );
+};
+
+const SystemBlueprintViewer: React.FC = () => {
+  return (
+    <div className="p-4 sm:p-8 animate-in fade-in duration-500 pb-32" dir="ltr">
+        <div className="bg-neutral-900 border border-white/10 p-6 rounded-[2.5rem] mb-8">
+            <h2 className="text-2xl font-black text-white italic mb-4">System Blueprint</h2>
+            <div className="bg-black p-4 rounded-xl border border-white/5 overflow-auto max-h-[60vh]">
+                <pre className="text-[10px] text-green-500 font-mono">{JSON.stringify(SYSTEM_CONFIG, null, 2)}</pre>
+            </div>
+        </div>
+    </div>
+  );
+};
+
 const AIAvatarManager: React.FC = () => {
-  return <div className="text-white text-center p-8">AI Manager Placeholder</div>;
+  return <div className="text-white text-center p-8">Legacy Component - Use System Page</div>;
 };
 
 const CentralKeyManager: React.FC = () => {
   return <div className="text-white text-center p-8">Keys Manager Placeholder</div>;
 };
 
-const AppAnalytics: React.FC<{ videos: Video[] }> = ({ videos }) => {
-  return <div className="text-white text-center p-8">Analytics Placeholder: {videos.length} videos</div>;
+const SectionRenamingManager: React.FC = () => {
+  const [sections, setSections] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchLayout = async () => {
+      try {
+        await ensureAuth();
+        const docRef = doc(db, "Settings", "HomeLayout");
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          setSections(data.sections || []);
+        }
+      } catch (e) {
+        console.error("Failed to load layout sections", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLayout();
+  }, []);
+
+  const handleLabelChange = (index: number, newLabel: string) => {
+    const updated = [...sections];
+    updated[index].label = newLabel;
+    setSections(updated);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await ensureAuth();
+      const docRef = doc(db, "Settings", "HomeLayout");
+      await updateDoc(docRef, { 
+        sections: sections,
+        lastUpdated: serverTimestamp()
+      });
+      alert("تم تحديث أسماء القوائم بنجاح!");
+    } catch (e) {
+      alert("فشل الحفظ. تأكد من الصلاحيات.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="text-cyan-500 text-center p-8 animate-pulse font-black">جاري جلب القوائم...</div>;
+
+  return (
+    <div className="p-4 sm:p-8 animate-in fade-in duration-500 pb-32">
+       <div className="bg-neutral-900 border border-cyan-500/30 p-6 rounded-[2.5rem] shadow-[0_0_30px_rgba(6,182,212,0.1)] mb-8 relative overflow-hidden">
+          <h2 className="text-2xl font-black text-white italic mb-2 relative z-10">مدير تسميات القوائم</h2>
+          <p className="text-[10px] text-cyan-500 font-bold uppercase tracking-widest relative z-10">Global List Renaming Tool</p>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-600/5 blur-3xl rounded-full"></div>
+       </div>
+
+       <div className="space-y-4">
+          {sections.map((section, idx) => (
+             <div key={idx} className="bg-black/40 border border-white/5 p-4 rounded-2xl flex items-center gap-4">
+                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-500 text-xs font-mono border border-white/10 shrink-0">
+                   {idx + 1}
+                </div>
+                <div className="flex-1">
+                   <p className="text-[9px] text-gray-500 mb-1 font-bold uppercase">{section.type.replace('_', ' ')}</p>
+                   <input 
+                      type="text" 
+                      value={section.label || ''} 
+                      onChange={(e) => handleLabelChange(idx, e.target.value)}
+                      placeholder="بدون عنوان..."
+                      className="w-full bg-transparent text-white font-bold text-sm outline-none border-b border-white/10 focus:border-cyan-500 transition-colors pb-1"
+                   />
+                </div>
+             </div>
+          ))}
+       </div>
+
+       <button 
+          onClick={handleSave} 
+          disabled={saving}
+          className="w-full mt-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl text-white font-black shadow-[0_0_20px_rgba(6,182,212,0.4)] active:scale-95 transition-all hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] disabled:opacity-50"
+       >
+          {saving ? 'جاري الحفظ...' : 'حفظ جميع التسميات 💾'}
+       </button>
+    </div>
+  );
 };
 
 interface AdminDashboardProps {
@@ -450,11 +546,12 @@ interface AdminDashboardProps {
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
   onClose, categories, initialVideos 
 }) => {
-  const [currentPasscode] = useState('5030775');
+  const [currentPasscode, setCurrentPasscode] = useState('5030775'); // Default fallback
   const [passcode, setPasscode] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('الكل');
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   
   // EDITING STATE
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -482,26 +579,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     is_trending: false,
     read_narrative: false,
     redirect_url: '',
-    poster_url: '' // Added poster_url state
+    poster_url: '' 
   });
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0); 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const posterInputRef = useRef<HTMLInputElement>(null); // Ref for poster input
+  // Removed manual poster input ref
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [posterPreviewUrl, setPosterPreviewUrl] = useState<string | null>(null); // State for poster preview
+  const [posterPreviewUrl, setPosterPreviewUrl] = useState<string | null>(null);
+  const [generatedPosterBlob, setGeneratedPosterBlob] = useState<Blob | null>(null);
 
-  // Helper to get persistent device ID for Firebase logging
-  const getDeviceId = () => {
-    let id = localStorage.getItem('device_security_id');
-    if (!id) {
-      id = 'dev_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-      localStorage.setItem('device_security_id', id);
-    }
-    return id;
-  };
+  // Fetch the latest admin passcode on mount
+  useEffect(() => {
+      const fetchPasscode = async () => {
+          try {
+              await ensureAuth();
+              const docRef = doc(db, "settings", "api_config");
+              const snap = await getDoc(docRef);
+              if (snap.exists() && snap.data().admin_passcode) {
+                  setCurrentPasscode(snap.data().admin_passcode);
+              }
+          } catch (e) {
+              console.warn("Failed to fetch custom passcode, using default.");
+          } finally {
+              setIsAuthLoading(false);
+          }
+      };
+      fetchPasscode();
+  }, []);
 
   const handleAuth = async () => {
     if (Date.now() < lockoutUntil) return;
@@ -527,21 +634,53 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const isLockedOut = Date.now() < lockoutUntil;
 
+  // --- AUTOMATIC THUMBNAIL GENERATOR (OPTIMIZED) ---
+  const generateAutoThumbnail = (file: File) => {
+        const video = document.createElement('video');
+        video.src = URL.createObjectURL(file);
+        video.muted = true;
+        video.playsInline = true;
+        video.crossOrigin = "anonymous"; 
+
+        video.onloadedmetadata = () => {
+            // Seek to 1.5 seconds to ensure we are past the black start
+            video.currentTime = Math.min(video.duration * 0.15, 1.5);
+        };
+
+        video.onseeked = () => {
+            const canvas = document.createElement('canvas');
+            // Force small width for performance (e.g., 320px)
+            const targetWidth = 320;
+            const scaleFactor = targetWidth / video.videoWidth; 
+            canvas.width = targetWidth; 
+            canvas.height = video.videoHeight * scaleFactor;
+            
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                // Heavy compression (quality 0.6) for speed
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        setGeneratedPosterBlob(blob);
+                        setPosterPreviewUrl(URL.createObjectURL(blob));
+                    }
+                    video.remove(); // Cleanup
+                }, 'image/jpeg', 0.6); 
+            }
+        };
+        
+        video.load();
+  };
+
   // Handle Video File Select & Preview
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
-    }
-  };
-
-  // Handle Poster File Select & Preview
-  const handlePosterSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const url = URL.createObjectURL(file);
-      setPosterPreviewUrl(url);
+      
+      // Auto-generate thumbnail immediately on file select
+      generateAutoThumbnail(file);
     }
   };
 
@@ -584,17 +723,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (posterPreviewUrl && !posterPreviewUrl.startsWith('http')) URL.revokeObjectURL(posterPreviewUrl);
     setPreviewUrl(null);
     setPosterPreviewUrl(null);
+    setGeneratedPosterBlob(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (posterInputRef.current) posterInputRef.current.value = '';
   };
 
-  // ----------------------------------------------------
-  // CORE LOGIC: R2 Upload + Firebase Metadata
-  // ----------------------------------------------------
   const handlePublish = async () => {
     const file = fileInputRef.current?.files?.[0];
-    const posterFile = posterInputRef.current?.files?.[0];
+    // Force use of Auto-Generated Blob if new video uploaded. 
+    // Manual upload is completely disabled.
+    const posterFileToUpload = generatedPosterBlob;
     
+    let workerUrl = R2_WORKER_URL;
+    let publicUrl = R2_PUBLIC_URL;
+    try {
+        const docRef = doc(db, "settings", "api_config");
+        const snap = await getDoc(docRef);
+        if(snap.exists()) {
+            if(snap.data().r2_worker_url) workerUrl = snap.data().r2_worker_url;
+            if(snap.data().r2_public_url) publicUrl = snap.data().r2_public_url;
+        }
+    } catch(e) {}
+
     // Manual Validation
     if (!editingId && !file && !newVideo.redirect_url) {
       alert("الرجاء اختيار ملف فيديو (من المربع العلوي) أو وضع رابط خارجي!");
@@ -619,37 +768,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       let finalVideoUrl = editingId ? previewUrl : "";
       let finalPosterUrl = editingId ? posterPreviewUrl : "";
 
-      // 1. Upload Poster Image to R2 (if new file selected)
-      if (posterFile) {
-          const cleanName = posterFile.name.replace(/[^\w.-]/g, '');
+      // UPLOAD POSTER (Auto-Generated Only)
+      if (posterFileToUpload) {
+          const cleanName = `auto_thumb_${Date.now()}.jpg`;
           const safePosterName = `img_${Date.now()}_${cleanName}`;
           
           await new Promise<void>((resolve, reject) => {
               const xhr = new XMLHttpRequest();
-              const targetUrl = `${R2_WORKER_URL}/${encodeURIComponent(safePosterName)}`;
+              const targetUrl = `${workerUrl}/${encodeURIComponent(safePosterName)}`;
               
               xhr.open('PUT', targetUrl, true);
               xhr.withCredentials = false;
-              xhr.setRequestHeader('Content-Type', posterFile.type || 'image/jpeg');
+              xhr.setRequestHeader('Content-Type', 'image/jpeg');
               
               xhr.onload = () => {
                   if (xhr.status >= 200 && xhr.status < 300) resolve();
                   else reject(new Error(`R2 Poster Upload Failed: ${xhr.statusText}`));
               };
               xhr.onerror = () => reject(new Error('Network Error during Poster Upload'));
-              xhr.send(posterFile);
+              xhr.send(posterFileToUpload);
           });
-          finalPosterUrl = `${R2_PUBLIC_URL}/${safePosterName}`;
+          finalPosterUrl = `${publicUrl}/${safePosterName}`;
       }
 
-      // 2. Upload Video to R2 (if new file selected)
+      // UPLOAD VIDEO
       if (file) {
         const cleanName = file.name.replace(/[^\w.-]/g, '');
         const safeFileName = `vid_${Date.now()}_${cleanName}`;
         
         await new Promise<void>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
-            const targetUrl = `${R2_WORKER_URL}/${encodeURIComponent(safeFileName)}`;
+            const targetUrl = `${workerUrl}/${encodeURIComponent(safeFileName)}`;
             
             xhr.open('PUT', targetUrl, true);
             xhr.withCredentials = false;
@@ -676,18 +825,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             xhr.send(file);
         });
 
-        finalVideoUrl = `${R2_PUBLIC_URL}/${safeFileName}`;
+        finalVideoUrl = `${publicUrl}/${safeFileName}`;
       } else if (!editingId) {
          finalVideoUrl = newVideo.redirect_url || "";
       }
       
-      // 3. Save Metadata to Firebase Firestore
       const videoData = {
         ...newVideo,
         title: finalTitle,
         description: finalDesc,
         video_url: finalVideoUrl,
-        poster_url: finalPosterUrl || null, // Save poster URL
+        poster_url: finalPosterUrl || null, 
         redirect_url: newVideo.redirect_url || null,
         created_at: serverTimestamp(),
       };
@@ -750,6 +898,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       return matchesSearch && matchesCategory;
     });
   }, [initialVideos, searchQuery, filterCategory]);
+
+  if (isAuthLoading) {
+      return (
+          <div className="fixed inset-0 z-[1000] bg-black flex items-center justify-center">
+              <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+      );
+  }
 
   if (!isAuthenticated) {
     if (isLockedOut) {
@@ -834,7 +990,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {viewMode === 'videos' && <div className="absolute inset-0 bg-red-600/10 blur-xl"></div>}
             </button>
             <button onClick={() => setViewMode('analytics')} className={`relative px-4 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider transition-all duration-500 border overflow-hidden group w-full sm:w-auto ${viewMode === 'analytics' ? 'bg-cyan-600/10 border-cyan-500 text-cyan-400 shadow-[0_0_30px_rgba(6,182,212,0.4)]' : 'bg-black/40 border-white/5 text-gray-400 hover:border-white/20 hover:text-white'}`}>
-                <span className="relative z-10">الجودة</span>
+                <span className="relative z-10">القوائم</span>
                 {viewMode === 'analytics' && <div className="absolute inset-0 bg-cyan-600/10 blur-xl"></div>}
             </button>
         </div>
@@ -870,7 +1026,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       ) : viewMode === 'keys' ? (
           <CentralKeyManager />
       ) : viewMode === 'analytics' ? (
-          <AppAnalytics videos={initialVideos} />
+          <SectionRenamingManager />
       ) : viewMode === 'blueprint' ? (
           <SystemBlueprintViewer />
       ) : viewMode === 'layout' ? (
@@ -911,23 +1067,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       )}
                     </div>
 
-                    <div onClick={() => !isUploading && posterInputRef.current?.click()} className={`w-32 aspect-[9/16] md:aspect-video border-2 border-dashed rounded-3xl flex flex-col items-center justify-center overflow-hidden relative transition-all cursor-pointer bg-black/50 ${isUploading ? 'opacity-50 pointer-events-none' : 'border-white/20 hover:border-yellow-500 hover:bg-yellow-500/5'}`}>
-                        <input type="file" ref={posterInputRef} accept="image/*" className="hidden" onChange={handlePosterSelect} />
-                        {posterPreviewUrl ? (
-                            <img src={posterPreviewUrl} className="w-full h-full object-cover" alt="Poster Preview" />
-                        ) : (
-                            <div className="text-center p-2">
-                                <svg className="w-8 h-8 text-gray-600 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                <span className="text-[8px] font-bold text-gray-500 block">صورة الغلاف (Thumbnail)</span>
-                            </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="text-[9px] font-black text-white">تغيير</span>
+                    <div className="w-32 flex flex-col gap-2">
+                        {/* READ-ONLY AUTO THUMBNAIL DISPLAY */}
+                        <div className={`flex-1 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center overflow-hidden relative bg-black/50 border-white/20 cursor-default opacity-80`}>
+                            {posterPreviewUrl ? (
+                                <img src={posterPreviewUrl} className="w-full h-full object-cover opacity-80" alt="Auto Thumbnail" />
+                            ) : (
+                                <div className="text-center p-2">
+                                    <svg className="w-8 h-8 text-gray-600 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    <span className="text-[8px] font-bold text-gray-500 block">تلقائي من النظام</span>
+                                </div>
+                            )}
+                            {/* No Input Here anymore */}
                         </div>
                     </div>
                 </div>
 
                 <div className="flex gap-4 justify-center">
+                    {/* ... (Existing Buttons) ... */}
                     <button onClick={() => setNewVideo({...newVideo, read_narrative: !newVideo.read_narrative})} className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-xs font-bold border transition-all active:scale-95 flex-1 justify-center ${newVideo.read_narrative ? 'bg-green-600 border-green-400 text-white shadow-[0_0_10px_green]' : 'bg-black border-white/10 text-gray-400'}`}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
                         سرد صوتي
@@ -976,7 +1133,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {filteredVideos.map(v => (
                     <div key={v.id} className={`bg-neutral-900/30 border border-white/5 p-4 rounded-[2rem] flex flex-col gap-4 ${v.is_trending ? 'border-red-600 shadow-[0_0_10px_red]' : ''} ${editingId === v.id ? 'border-blue-600/50 ring-2 ring-blue-600/20' : ''}`}>
                     <div className="aspect-video bg-black rounded-xl overflow-hidden relative group">
-                        <video src={v.video_url} poster={v.poster_url || undefined} className="w-full h-full object-cover" controls preload="metadata" crossOrigin="anonymous" playsInline onError={(e) => (e.currentTarget.style.display = 'none')} />
+                        <SafeAutoPlayVideo 
+                            src={formatVideoSource(v)} 
+                            poster={v.poster_url || undefined} 
+                            className="w-full h-full object-cover" 
+                            controls={false} // Disable controls to rely on autoplay
+                            muted 
+                            loop 
+                            playsInline 
+                            crossOrigin="anonymous" 
+                            preload="metadata"
+                        />
                         {v.is_trending && <div className="absolute top-2 right-2 bg-red-600 text-[8px] font-black px-2 py-0.5 rounded pointer-events-none">TREND</div>}
                         {v.read_narrative && <div className="absolute top-2 left-2 bg-green-600 text-[8px] font-black px-2 py-0.5 rounded shadow-[0_0_10px_green] pointer-events-none">TTS</div>}
                         {editingId === v.id && <div className="absolute inset-0 bg-blue-600/20 flex items-center justify-center backdrop-blur-sm"><span className="font-bold text-white drop-shadow-md">قيد التعديل...</span></div>}

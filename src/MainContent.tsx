@@ -72,20 +72,72 @@ export const formatVideoSource = (video: Video) => {
   return r2Url;
 };
 
-// --- SAFE VIDEO COMPONENT FOR AUTOPLAY ---
-export const SafeAutoPlayVideo: React.FC<React.VideoHTMLAttributes<HTMLVideoElement>> = (props) => {
+// --- SAFE VIDEO COMPONENT FOR INSTANT LOAD & SCROLL-BASED AUTOPLAY ---
+interface SafeVideoProps extends React.VideoHTMLAttributes<HTMLVideoElement> {
+    isOverlayActive?: boolean;
+}
+
+export const SafeAutoPlayVideo: React.FC<SafeVideoProps> = ({ isOverlayActive, ...props }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   
   useEffect(() => {
     const v = videoRef.current;
-    if (v && props.src) {
-      v.muted = true;
-      // We do NOT call play() here automatically to keep page load lightning fast.
-      // Playback is handled by parents or interaction.
-    }
-  }, [props.src]);
+    if (!v || !props.src) return;
 
-  return <video ref={videoRef} {...props} autoPlay={false} preload="none" />;
+    // Force Metadata Load & Mute to be ready
+    v.muted = true;
+    
+    // If overlay is active, stop completely to save resources for the main player
+    if (isOverlayActive) {
+        v.pause();
+        return;
+    }
+
+    // Scroll Observer: Plays ONLY when 60% visible (YouTube Style)
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        // Play when visible
+        const playPromise = v.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(() => {});
+        }
+      } else {
+        // Pause immediately when out of view
+        v.pause();
+      }
+    }, {
+      threshold: 0.6 // Trigger when 60% of video is visible
+    });
+
+    observer.observe(v);
+
+    return () => {
+      observer.disconnect();
+      v.pause(); 
+    };
+  }, [props.src, isOverlayActive]);
+
+  // BLACK SCREEN FIX: Force seek to first frame on metadata load
+  // This ensures a thumbnail is visible even if the video hasn't started playing or has no poster
+  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+      const v = e.currentTarget;
+      if (v.paused && v.currentTime === 0) {
+          v.currentTime = 0.001; // Force render of first frame
+      }
+  };
+
+  return (
+      <video 
+        ref={videoRef} 
+        {...props} 
+        muted 
+        playsInline 
+        loop 
+        autoPlay={false} // Managed manually by observer
+        preload="metadata" // CRITICAL: Loads header to show duration & dimensions immediately
+        onLoadedMetadata={handleLoadedMetadata} // CRITICAL: Fixes black screen on iOS/Android
+      />
+  );
 };
 
 export const NeonTrendBadge = ({ is_trending }: { is_trending: boolean }) => {
@@ -127,12 +179,10 @@ export const VideoCardThumbnail: React.FC<{
   onLike?: (id: string) => void,
   onCategoryClick?: (category: string) => void
 }> = ({ video, isOverlayActive, interactions, onLike, onCategoryClick }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [hasError, setHasError] = useState(false);
   
   const stats = useMemo(() => video ? getDeterministicStats(video.video_url) : { views: 0, likes: 0 }, [video?.video_url]);
   const formattedSrc = formatVideoSource(video);
-  // Add randomness to color selection based on ID to ensure adjacent variety
   const colors = useMemo(() => video ? getNeonColor(video.id) : {border: 'border-white/10'}, [video]);
   
   const isLiked = interactions?.likedIds?.includes(video?.id) || false;
@@ -141,29 +191,6 @@ export const VideoCardThumbnail: React.FC<{
   const progress = watchItem ? watchItem.progress : 0;
   const isWatched = progress > 0.05; 
   const isHeartActive = isLiked || isSaved;
-
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v || hasError || !video) return;
-    
-    if (isOverlayActive) {
-      v.pause();
-      return;
-    }
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        // Only play if visible, but rely on poster for initial load
-        const playPromise = v.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(() => {});
-        }
-      } else {
-        v.pause();
-      }
-    }, { threshold: 0.15 }); 
-    observer.observe(v);
-    return () => observer.disconnect();
-  }, [video?.video_url, isOverlayActive, hasError, video]);
 
   if (!video) return null;
 
@@ -188,20 +215,14 @@ export const VideoCardThumbnail: React.FC<{
     <div className={`w-full h-full relative overflow-hidden group rounded-2xl transition-transform duration-300 transform-gpu backface-hidden active:scale-95 ${containerStyle} bg-black`}>
       
       {/* 
-         PERFORMANCE OPTIMIZATION: 
-         - preload="none" ensures instant rendering of the grid without fetching video data.
-         - poster={video.poster_url} provides the visual immediately.
-         - object-cover ensures it fills the distinct frame.
+         USING SafeAutoPlayVideo:
+         - Handles the 7-second preview if no poster.
+         - Strictly obeys isOverlayActive to pause background videos.
       */}
-      <video 
-        ref={videoRef} 
+      <SafeAutoPlayVideo 
         src={formattedSrc}
         poster={video.poster_url || undefined} 
-        muted 
-        loop 
-        playsInline 
-        crossOrigin="anonymous" 
-        preload="none" 
+        isOverlayActive={isOverlayActive}
         className="w-full h-full object-cover opacity-100 contrast-110 saturate-125 pointer-events-none landscape:object-contain relative z-10 bg-black" 
         onError={() => setHasError(true)}
       />
@@ -449,6 +470,7 @@ export const InteractiveMarquee: React.FC<{
 
             return (
               <div key={`${item.id}-${idx}`} onClick={() => onPlay(item)} className={`${itemDimensions} shrink-0 rounded-xl overflow-hidden border relative active:scale-95 transition-transform ${item.is_trending ? 'border-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)]' : colors.border} bg-black`} dir="rtl">
+                {/* Use SafeAutoPlayVideo here too so marquees follow rules */}
                 <SafeAutoPlayVideo 
                    src={formattedSrc}
                    poster={item.poster_url || undefined} 
@@ -520,6 +542,7 @@ const MainContent: React.FC<any> = ({
 
   const { 
     marqueeShorts1, marqueeLongs1, 
+    interestGrid, // NEW
     gridShorts1, gridShorts2, 
     stackLongs1, 
     marqueeShorts2, marqueeLongs2, 
@@ -549,34 +572,40 @@ const MainContent: React.FC<any> = ({
      // Order of operations determines priority.
      // High value sections should be filled first.
      
-     // 1. Top Marquees
-     const ms1 = getUniqueBatch(shortsOnly, 12);
-     const ml1 = getUniqueBatch(longsOnly, 8);
+     // 1. Top Marquees (Now strictly 10 videos per strip)
+     const ms1 = getUniqueBatch(shortsOnly, 10);
+     const ml1 = getUniqueBatch(longsOnly, 10);
+
+     // 2. Interest Based Grid (New Section - 4 Shorts)
+     // Since videos are already sorted by interests in App.tsx smart recommendations,
+     // taking the next batch guarantees they are interest-aligned.
+     const iGrid = getUniqueBatch(shortsOnly, 4);
      
-     // 2. Featured Grids
+     // 3. Featured Grids
      const gs1 = getUniqueBatch(shortsOnly, 2);
      const gs2 = getUniqueBatch(shortsOnly, 2);
      
-     // 3. Featured Stacks
+     // 4. Featured Stacks
      const sl1 = getUniqueBatch(longsOnly, 4);
      
-     // 4. Secondary Marquees
-     const ms2 = getUniqueBatch(shortsOnly, 12);
-     const ml2 = getUniqueBatch(longsOnly, 8);
+     // 5. Secondary Marquees (Strictly 10)
+     const ms2 = getUniqueBatch(shortsOnly, 10);
+     const ml2 = getUniqueBatch(longsOnly, 10);
      
-     // 5. Secondary Grids
+     // 6. Secondary Grids
      const gs3 = getUniqueBatch(shortsOnly, 2);
      const gs4 = getUniqueBatch(shortsOnly, 2);
      
-     // 6. Secondary Stacks
+     // 7. Secondary Stacks
      const sl2 = getUniqueBatch(longsOnly, 4);
      
-     // 7. Footer Marquees
-     const ms3 = getUniqueBatch(shortsOnly, 12);
-     const ml3 = getUniqueBatch(longsOnly, 8);
+     // 8. Footer Marquees (Strictly 10)
+     const ms3 = getUniqueBatch(shortsOnly, 10);
+     const ml3 = getUniqueBatch(longsOnly, 10);
 
      return {
         marqueeShorts1: ms1, marqueeLongs1: ml1,
+        interestGrid: iGrid,
         gridShorts1: gs1, gridShorts2: gs2, stackLongs1: sl1,
         marqueeShorts2: ms2, marqueeLongs2: ml2,
         gridShorts3: gs3, gridShorts4: gs4, stackLongs2: sl2,
@@ -647,7 +676,8 @@ const MainContent: React.FC<any> = ({
              <div className="flex items-center gap-2">
                  <h1 className="text-sm font-black italic text-red-600">الحديقة المرعبة</h1>
                  <div className="px-2 py-0.5 border border-yellow-400 rounded-lg bg-yellow-400/10 animate-pulse">
-                     <span className="text-[10px] font-black text-blue-400">تحديث</span>
+                     {/* Updated to yellow text for refresh state */}
+                     <span className="text-[10px] font-black text-yellow-400">تحديث</span>
                  </div>
              </div>
           ) : (
@@ -714,10 +744,23 @@ const MainContent: React.FC<any> = ({
             <div className="-mt-1"></div> 
             {marqueeLongs1.length > 0 && <InteractiveMarquee videos={marqueeLongs1} onPlay={(v) => onPlayLong(v, longsOnly)} direction="right-to-left" interactions={interactions} transparent={false} onLike={onLike} />}
 
+            {/* NEW: Interest Based Grid (4 Shorts / 2x2) */}
+            {interestGrid.length > 0 && (
+                <div className="px-4 grid grid-cols-2 gap-2 mb-6 mt-4 animate-in slide-in-from-bottom-6 duration-700">
+                    {interestGrid.map((v: any, i: number) => {
+                        return (
+                        <div key={v.id} onClick={() => onPlayShort(v, shortsOnly)} className="aspect-[9/16] relative">
+                            <VideoCardThumbnail video={v} interactions={interactions} isOverlayActive={isOverlayActive} onLike={onLike} onCategoryClick={onCategoryClick} />
+                        </div>
+                        )
+                    })}
+                </div>
+            )}
+
             {/* 3. 2 Shorts Side-by-Side */}
             {gridShorts1.length > 0 && (
                 <>
-                <SectionHeader title="أهوال قصيرة (مختارة)" color="bg-yellow-500" />
+                {/* HEADER REMOVED */}
                 <div className="px-4 grid grid-cols-2 gap-3.5 mb-6">
                     {gridShorts1.map((v: any) => v && (
                     <div key={v.id} onClick={() => onPlayShort(v, shortsOnly)} className="aspect-[9/16] animate-in fade-in duration-500">
@@ -742,7 +785,7 @@ const MainContent: React.FC<any> = ({
             {/* 5. 4 Long Videos Stacked */}
             {stackLongs1.length > 0 && (
                 <>
-                <SectionHeader title="حكايات مرعبة (كاملة)" color="bg-red-600" />
+                {/* HEADER REMOVED */}
                 <div className="px-4 space-y-4 mb-6">
                     {stackLongs1.map((v: any) => v && (
                     <div key={v.id} onClick={() => onPlayLong(v, longsOnly)} className="aspect-video w-full animate-in zoom-in-95 duration-500">
@@ -756,7 +799,7 @@ const MainContent: React.FC<any> = ({
             {/* 6. Moving Shorts Marquee */}
             {marqueeShorts2.length > 0 && (
                 <>
-                <SectionHeader title="ومضات من الجحيم" color="bg-orange-500" />
+                {/* HEADER REMOVED */}
                 <InteractiveMarquee videos={marqueeShorts2} onPlay={(v) => onPlayShort(v, shortsOnly)} isShorts={true} direction="left-to-right" interactions={interactions} onLike={onLike} />
                 </>
             )}
@@ -764,7 +807,7 @@ const MainContent: React.FC<any> = ({
             {/* 7. Moving Long Videos Marquee */}
             {marqueeLongs2.length > 0 && (
                 <>
-                <SectionHeader title="أرشيف الخزنة" color="bg-emerald-500" />
+                {/* HEADER REMOVED */}
                 <InteractiveMarquee videos={marqueeLongs2} onPlay={(v) => onPlayLong(v, longsOnly)} direction="right-to-left" interactions={interactions} onLike={onLike} />
                 </>
             )}
@@ -774,7 +817,7 @@ const MainContent: React.FC<any> = ({
             {/* Grid 2 Shorts */}
             {gridShorts3.length > 0 && (
                 <>
-                <SectionHeader title="ظلال متحركة" color="bg-purple-500" />
+                {/* HEADER REMOVED */}
                 <div className="px-4 grid grid-cols-2 gap-3.5 mb-6">
                     {gridShorts3.map((v: any) => v && (
                     <div key={v.id} onClick={() => onPlayShort(v, shortsOnly)} className="aspect-[9/16] animate-in fade-in duration-500">
@@ -799,7 +842,7 @@ const MainContent: React.FC<any> = ({
             {/* Stack Longs */}
             {stackLongs2.length > 0 && (
                 <>
-                <SectionHeader title="ملفات سرية" color="bg-blue-600" />
+                {/* HEADER REMOVED */}
                 <div className="px-4 space-y-4 mb-6">
                     {stackLongs2.map((v: any) => v && (
                     <div key={v.id} onClick={() => onPlayLong(v, longsOnly)} className="aspect-video w-full animate-in zoom-in-95 duration-500">
@@ -813,7 +856,7 @@ const MainContent: React.FC<any> = ({
             {/* Marquee Shorts */}
             {marqueeShorts3.length > 0 && (
                 <>
-                <SectionHeader title="النهاية تقترب" color="bg-pink-600" />
+                {/* HEADER REMOVED */}
                 <InteractiveMarquee videos={marqueeShorts3} onPlay={(v) => onPlayShort(v, shortsOnly)} isShorts={true} direction="left-to-right" interactions={interactions} onLike={onLike} />
                 </>
             )}
@@ -821,7 +864,7 @@ const MainContent: React.FC<any> = ({
             {/* Marquee Longs */}
             {marqueeLongs3.length > 0 && (
                 <>
-                <SectionHeader title="الخروج من القبو" color="bg-white" />
+                {/* HEADER REMOVED */}
                 <InteractiveMarquee videos={marqueeLongs3} onPlay={(v) => onPlayLong(v, longsOnly)} direction="right-to-left" interactions={interactions} onLike={onLike} />
                 </>
             )}
@@ -901,12 +944,5 @@ const MainContent: React.FC<any> = ({
     </div>
   );
 };
-
-const SectionHeader: React.FC<{ title: string, color: string }> = ({ title, color }) => (
-  <div className="px-5 py-2 flex items-center gap-2.5">
-    <div className={`w-1.5 h-3.5 ${color} rounded-full`}></div>
-    <h2 className="text-[11px] font-black text-white italic uppercase tracking-[0.15em]">{title}</h2>
-  </div>
-);
 
 export default MainContent;
